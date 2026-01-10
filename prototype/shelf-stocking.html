@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dunkin' - Shelf Stocking Prototype</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #2d2d44 0%, #1a1a2e 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            font-family: 'Segoe UI', sans-serif;
+            color: #eee;
+        }
+        h1 {
+            margin-bottom: 10px;
+            color: #ffd93d;
+        }
+        .instructions {
+            margin-bottom: 15px;
+            color: #aaa;
+            font-size: 14px;
+        }
+        canvas {
+            border: 3px solid #8b7355;
+            border-radius: 8px;
+            background: #f5e6d3;
+        }
+        .status {
+            margin-top: 15px;
+            font-size: 18px;
+            color: #6bcb77;
+        }
+        .hint {
+            margin-top: 10px;
+            color: #666;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Dunkin' - Shelf Stocking</h1>
+    <div class="instructions">Arrow Keys = Move | Hold E = Stock shelves / Help customers | Hold Space = Load items</div>
+    <canvas id="game" width="640" height="480"></canvas>
+    <div class="status" id="status">Holding: Empty | Shelves: 0/3 | Helped: 0</div>
+    <div class="hint">Customers will enter and browse. Walk up to them and press E to help!</div>
+    <button id="musicBtn" onclick="toggleMusic(); updateMusicButton();" style="margin-top: 15px; padding: 10px 20px; background: #4a4a6a; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-size: 14px;">🎵 Play Music (M)</button>
+
+    <script>
+        // ============================================
+        // DUNKIN' SHELF-STOCKING PROTOTYPE
+        // Testing: Grid movement, item placement, audio feedback
+        // ============================================
+
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+        const statusEl = document.getElementById('status');
+
+        // Audio context for progressive sounds
+        let audioCtx = null;
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        // Play a beep at given frequency
+        function playTone(freq, duration = 0.1, type = 'square') {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.value = freq;
+            gain.gain.value = 0.15;
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        // Play progressive tone based on shelf fill (1-10)
+        function playShelfTone(count) {
+            // Base frequency 220Hz, goes up ~50Hz per item
+            const freq = 220 + (count * 50);
+            playTone(freq, 0.12, 'square');
+        }
+
+        // Play completion sound (ka-ching!)
+        function playComplete() {
+            // Arpeggio for satisfaction
+            setTimeout(() => playTone(523, 0.1, 'sine'), 0);    // C5
+            setTimeout(() => playTone(659, 0.1, 'sine'), 80);   // E5
+            setTimeout(() => playTone(784, 0.15, 'sine'), 160); // G5
+            setTimeout(() => playTone(1047, 0.3, 'sine'), 240); // C6
+        }
+
+        // Play pickup sound
+        function playPickup() {
+            playTone(330, 0.08, 'triangle');
+        }
+
+        // ============================================
+        // UPBEAT KONBINI MUSIC GENERATOR
+        // Happy, bouncy, friendly vibes!
+        // ============================================
+
+        let musicPlaying = false;
+        let musicNodes = {};
+        let musicTimeouts = [];
+
+        // Musical constants - UPBEAT tempo!
+        const BPM = 128;
+        const BEAT_TIME = 60 / BPM;
+
+        // Major pentatonic in C - bright and happy
+        const NOTES = {
+            C3: 130.81, D3: 146.83, E3: 164.81, G3: 196.00, A3: 220.00,
+            C4: 261.63, D4: 293.66, E4: 329.63, G4: 392.00, A4: 440.00,
+            C5: 523.25, D5: 587.33, E5: 659.25, G5: 783.99, A5: 880.00,
+        };
+
+        // Happy chord progression (I - V - vi - IV in C)
+        const CHORD_PROGRESSION = [
+            { root: 'C', notes: [NOTES.C3, NOTES.E3, NOTES.G3] },      // C major - happy!
+            { root: 'G', notes: [NOTES.G3, NOTES.D4, NOTES.G4] },      // G major - bright
+            { root: 'A', notes: [NOTES.A3, NOTES.C4, NOTES.E4] },      // A minor - gentle
+            { root: 'F', notes: [NOTES.G3, NOTES.C4, NOTES.E4] },      // F major (as G sus)
+        ];
+
+        // Bouncy melody patterns - more notes, more movement!
+        const HAPPY_MELODIES = [
+            ['C5', 'E5', 'G5', 'E5', 'C5', 'D5', 'E5', 'G5'],
+            ['G5', 'E5', 'D5', 'C5', 'D5', 'E5', 'G5', 'A5'],
+            ['E5', 'G5', 'A5', 'G5', 'E5', 'D5', 'C5', 'E5'],
+            ['C5', 'C5', 'G4', 'G4', 'A4', 'A4', 'G4', null],
+        ];
+
+        // Bass patterns - bouncy octaves
+        const BASS_PATTERN = [1, 0, 1, 0, 1, 1, 0, 1]; // 1 = play, 0 = rest
+
+        function createMusicContext() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            return audioCtx;
+        }
+
+        function scheduleTimeout(fn, time) {
+            const id = setTimeout(fn, time);
+            musicTimeouts.push(id);
+            return id;
+        }
+
+        function startMusic() {
+            if (musicPlaying) return;
+
+            const ctx = createMusicContext();
+            musicPlaying = true;
+            musicTimeouts = [];
+
+            // Master gain
+            const masterGain = ctx.createGain();
+            masterGain.gain.value = 0.35;
+            masterGain.connect(ctx.destination);
+            musicNodes.master = masterGain;
+
+            // Light reverb (short, bright)
+            const convolver = ctx.createConvolver();
+            const sampleRate = ctx.sampleRate;
+            const length = sampleRate * 0.5; // Short reverb
+            const impulse = ctx.createBuffer(2, length, sampleRate);
+
+            for (let channel = 0; channel < 2; channel++) {
+                const data = impulse.getChannelData(channel);
+                for (let i = 0; i < length; i++) {
+                    data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, 3);
+                }
+            }
+            convolver.buffer = impulse;
+
+            const dryGain = ctx.createGain();
+            const wetGain = ctx.createGain();
+            dryGain.gain.value = 0.85;
+            wetGain.gain.value = 0.15;
+
+            dryGain.connect(masterGain);
+            convolver.connect(wetGain);
+            wetGain.connect(masterGain);
+
+            musicNodes.dry = dryGain;
+            musicNodes.wet = convolver;
+
+            // Start all layers
+            startChordLayer(ctx, dryGain);
+            startMelodyLayer(ctx, dryGain, convolver);
+            startBassLayer(ctx, dryGain);
+            startDrumLayer(ctx, dryGain);
+            startArpLayer(ctx, dryGain, convolver);
+
+            console.log('🎵 Happy konbini music started!');
+        }
+
+        function startChordLayer(ctx, output) {
+            let chordIndex = 0;
+
+            function playChord() {
+                if (!musicPlaying) return;
+
+                const chord = CHORD_PROGRESSION[chordIndex];
+
+                chord.notes.forEach((freq, i) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+
+                    osc.type = 'triangle';
+                    osc.frequency.value = freq * 2; // One octave up for brightness
+
+                    osc.connect(gain);
+                    gain.connect(output);
+
+                    const now = ctx.currentTime;
+                    gain.gain.setValueAtTime(0, now);
+                    gain.gain.linearRampToValueAtTime(0.08, now + 0.02);
+                    gain.gain.linearRampToValueAtTime(0.05, now + BEAT_TIME * 2);
+                    gain.gain.linearRampToValueAtTime(0, now + BEAT_TIME * 4 - 0.05);
+
+                    osc.start(now);
+                    osc.stop(now + BEAT_TIME * 4);
+                });
+
+                chordIndex = (chordIndex + 1) % CHORD_PROGRESSION.length;
+                scheduleTimeout(playChord, BEAT_TIME * 4 * 1000);
+            }
+
+            playChord();
+        }
+
+        function startMelodyLayer(ctx, dry, wet) {
+            let patternIndex = 0;
+            let noteIndex = 0;
+
+            function playNote() {
+                if (!musicPlaying) return;
+
+                const pattern = HAPPY_MELODIES[patternIndex];
+                const noteName = pattern[noteIndex];
+
+                if (noteName && NOTES[noteName]) {
+                    const freq = NOTES[noteName];
+
+                    // Bright, plucky synth
+                    const osc = ctx.createOscillator();
+                    const osc2 = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    const filter = ctx.createBiquadFilter();
+
+                    osc.type = 'square';
+                    osc.frequency.value = freq;
+
+                    osc2.type = 'sine';
+                    osc2.frequency.value = freq;
+
+                    filter.type = 'lowpass';
+                    filter.frequency.value = 3000;
+                    filter.Q.value = 2;
+
+                    const oscGain = ctx.createGain();
+                    oscGain.gain.value = 0.3;
+                    const osc2Gain = ctx.createGain();
+                    osc2Gain.gain.value = 0.7;
+
+                    osc.connect(oscGain);
+                    osc2.connect(osc2Gain);
+                    oscGain.connect(filter);
+                    osc2Gain.connect(filter);
+                    filter.connect(gain);
+                    gain.connect(dry);
+                    gain.connect(wet);
+
+                    const now = ctx.currentTime;
+                    // Snappy envelope
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.1, now + 0.05);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + BEAT_TIME * 0.8);
+
+                    // Filter sweep for brightness
+                    filter.frequency.setValueAtTime(4000, now);
+                    filter.frequency.exponentialRampToValueAtTime(1500, now + 0.1);
+
+                    osc.start(now);
+                    osc2.start(now);
+                    osc.stop(now + BEAT_TIME);
+                    osc2.stop(now + BEAT_TIME);
+                }
+
+                noteIndex++;
+                if (noteIndex >= pattern.length) {
+                    noteIndex = 0;
+                    patternIndex = (patternIndex + 1) % HAPPY_MELODIES.length;
+                }
+
+                scheduleTimeout(playNote, BEAT_TIME * 0.5 * 1000);
+            }
+
+            scheduleTimeout(playNote, BEAT_TIME * 4 * 1000);
+        }
+
+        function startBassLayer(ctx, output) {
+            let chordIndex = 0;
+            let beatIndex = 0;
+
+            function playBass() {
+                if (!musicPlaying) return;
+
+                if (BASS_PATTERN[beatIndex]) {
+                    const chord = CHORD_PROGRESSION[chordIndex];
+                    const freq = chord.notes[0]; // Root note
+
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    const filter = ctx.createBiquadFilter();
+
+                    osc.type = 'sine';
+                    osc.frequency.value = freq;
+
+                    filter.type = 'lowpass';
+                    filter.frequency.value = 500;
+
+                    osc.connect(filter);
+                    filter.connect(gain);
+                    gain.connect(output);
+
+                    const now = ctx.currentTime;
+                    gain.gain.setValueAtTime(0.3, now);
+                    gain.gain.exponentialRampToValueAtTime(0.15, now + 0.08);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + BEAT_TIME * 0.4);
+
+                    osc.start(now);
+                    osc.stop(now + BEAT_TIME * 0.5);
+                }
+
+                beatIndex++;
+                if (beatIndex >= BASS_PATTERN.length) {
+                    beatIndex = 0;
+                    chordIndex = (chordIndex + 1) % CHORD_PROGRESSION.length;
+                }
+
+                scheduleTimeout(playBass, BEAT_TIME * 0.5 * 1000);
+            }
+
+            playBass();
+        }
+
+        function startDrumLayer(ctx, output) {
+            let beat = 0;
+
+            function playDrum() {
+                if (!musicPlaying) return;
+
+                const now = ctx.currentTime;
+
+                // Kick on 1 and 3
+                if (beat % 4 === 0) {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(150, now);
+                    osc.frequency.exponentialRampToValueAtTime(40, now + 0.1);
+                    osc.connect(gain);
+                    gain.connect(output);
+                    gain.gain.setValueAtTime(0.4, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                    osc.start(now);
+                    osc.stop(now + 0.15);
+                }
+
+                // Snappy snare on 2 and 4
+                if (beat % 4 === 2) {
+                    const noise = ctx.createBufferSource();
+                    const buffer = ctx.createBuffer(1, ctx.sampleRate * 0.1, ctx.sampleRate);
+                    const data = buffer.getChannelData(0);
+                    for (let i = 0; i < buffer.length; i++) {
+                        data[i] = Math.random() * 2 - 1;
+                    }
+                    noise.buffer = buffer;
+
+                    const filter = ctx.createBiquadFilter();
+                    filter.type = 'bandpass';
+                    filter.frequency.value = 3000;
+                    filter.Q.value = 1;
+
+                    const gain = ctx.createGain();
+                    noise.connect(filter);
+                    filter.connect(gain);
+                    gain.connect(output);
+
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+                    noise.start(now);
+                    noise.stop(now + 0.1);
+                }
+
+                // Hi-hat on every 8th note
+                const hihatVol = (beat % 2 === 0) ? 0.06 : 0.03;
+                const noise = ctx.createBufferSource();
+                const buffer = ctx.createBuffer(1, ctx.sampleRate * 0.03, ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < buffer.length; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+                noise.buffer = buffer;
+
+                const filter = ctx.createBiquadFilter();
+                filter.type = 'highpass';
+                filter.frequency.value = 8000;
+
+                const gain = ctx.createGain();
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(output);
+
+                gain.gain.setValueAtTime(hihatVol, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+                noise.start(now);
+                noise.stop(now + 0.05);
+
+                beat++;
+                scheduleTimeout(playDrum, BEAT_TIME * 0.5 * 1000);
+            }
+
+            playDrum();
+        }
+
+        function startArpLayer(ctx, dry, wet) {
+            let chordIndex = 0;
+            let arpIndex = 0;
+            const arpPattern = [0, 1, 2, 1]; // Which chord note to play
+
+            function playArp() {
+                if (!musicPlaying) return;
+
+                const chord = CHORD_PROGRESSION[chordIndex];
+                const noteIdx = arpPattern[arpIndex % arpPattern.length];
+                const freq = chord.notes[noteIdx] * 4; // Two octaves up - sparkly!
+
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.value = freq;
+
+                osc.connect(gain);
+                gain.connect(dry);
+                gain.connect(wet);
+
+                const now = ctx.currentTime;
+                gain.gain.setValueAtTime(0.08, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + BEAT_TIME * 0.3);
+
+                osc.start(now);
+                osc.stop(now + BEAT_TIME * 0.4);
+
+                arpIndex++;
+                if (arpIndex >= 8) {
+                    arpIndex = 0;
+                    chordIndex = (chordIndex + 1) % CHORD_PROGRESSION.length;
+                }
+
+                scheduleTimeout(playArp, BEAT_TIME * 0.5 * 1000);
+            }
+
+            scheduleTimeout(playArp, BEAT_TIME * 2 * 1000);
+        }
+
+        function stopMusic() {
+            musicPlaying = false;
+            // Clear all scheduled notes
+            musicTimeouts.forEach(id => clearTimeout(id));
+            musicTimeouts = [];
+            if (musicNodes.master) {
+                musicNodes.master.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.5);
+            }
+            console.log('🎵 Music stopped');
+        }
+
+        function toggleMusic() {
+            if (musicPlaying) {
+                stopMusic();
+            } else {
+                startMusic();
+            }
+        }
+
+        // ============================================
+        // ASSET LOADING
+        // ============================================
+
+        const assets = {
+            player: null,
+            customer: null,
+            shelfDrinks: null,
+            shelfSnacks: null,
+            shelfBento: null
+        };
+
+        let assetsLoaded = 0;
+        const totalAssets = 5;
+
+        function loadImage(src) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => {
+                    assetsLoaded++;
+                    resolve(img);
+                };
+                img.onerror = () => {
+                    console.warn(`Failed to load: ${src}, using fallback`);
+                    assetsLoaded++;
+                    resolve(null);
+                };
+                img.src = src;
+            });
+        }
+
+        async function loadAssets() {
+            const basePath = 'assets/';
+            assets.player = await loadImage(basePath + 'player.jpeg');
+            assets.customer = await loadImage(basePath + 'customer-1.jpeg');
+            assets.shelfDrinks = await loadImage(basePath + 'shelf-drinks.jpeg');
+            assets.shelfSnacks = await loadImage(basePath + 'shelf-snacks.jpeg');
+            assets.shelfBento = await loadImage(basePath + 'shelf-bento.jpeg');
+            console.log(`Assets loaded: ${assetsLoaded}/${totalAssets}`);
+        }
+
+        // ============================================
+        // GAME STATE
+        // ============================================
+
+        const TILE_SIZE = 48;
+        const GRID_W = 13;
+        const GRID_H = 10;
+
+        // Player
+        const player = {
+            x: 6,
+            y: 5,
+            holding: 0,      // Number of items held (0-6)
+            maxHold: 6,      // Max items player can carry
+            color: '#ff6b6b'
+        };
+
+        // Shelves (3 shelves, each holds 10 items)
+        const shelves = [
+            { x: 2, y: 2, items: 3, maxItems: 10, type: 'drinks', color: '#4ecdc4', complete: false },
+            { x: 6, y: 2, items: 5, maxItems: 10, type: 'snacks', color: '#ffe66d', complete: false },
+            { x: 10, y: 2, items: 1, maxItems: 10, type: 'bento', color: '#ff8b94', complete: false }
+        ];
+
+        // Stockroom area (bottom of screen)
+        const stockroomY = 8;
+
+        // Sparkle effects
+        const sparkles = [];
+
+        // Customers
+        const customers = [];
+        let lastCustomerTime = Date.now(); // Start counting from now
+        const CUSTOMER_INTERVAL = 5000; // First customer after 5 seconds, then every 8
+        const CUSTOMER_TYPES = ['drinks', 'snacks', 'bento'];
+        const CUSTOMER_COLORS = ['#e8b4b8', '#b4d4e8', '#d4e8b4', '#e8d4b4'];
+
+        function spawnCustomer() {
+            const type = CUSTOMER_TYPES[Math.floor(Math.random() * CUSTOMER_TYPES.length)];
+            const targetShelf = shelves.find(s => s.type === type);
+
+            // Find a spot near the shelf they're interested in
+            const targetX = targetShelf.x + (Math.random() > 0.5 ? 1 : -1);
+            const targetY = targetShelf.y + 1 + Math.floor(Math.random() * 2);
+
+            const customer = {
+                x: 6,  // Start at door
+                y: 0,
+                targetX: Math.max(1, Math.min(GRID_W - 2, targetX)),
+                targetY: Math.min(stockroomY - 1, targetY),
+                want: type,
+                color: CUSTOMER_COLORS[Math.floor(Math.random() * CUSTOMER_COLORS.length)],
+                state: 'entering', // entering, browsing, helped, leaving
+                helped: false,
+                moveTimer: 0
+            };
+            customers.push(customer);
+            playDoorSound();
+        }
+
+        function playDoorSound() {
+            // Ding-dong door chime
+            setTimeout(() => playTone(659, 0.15, 'sine'), 0);   // E5
+            setTimeout(() => playTone(523, 0.2, 'sine'), 150);  // C5
+        }
+
+        function playHelpSound() {
+            // Happy little jingle
+            setTimeout(() => playTone(523, 0.1, 'sine'), 0);    // C5
+            setTimeout(() => playTone(659, 0.1, 'sine'), 100);  // E5
+            setTimeout(() => playTone(784, 0.15, 'sine'), 200); // G5
+        }
+
+        function updateCustomers() {
+            const now = Date.now();
+
+            // Spawn new customer periodically (max 2 at a time for chill vibes)
+            if (now - lastCustomerTime > CUSTOMER_INTERVAL && customers.length < 2) {
+                spawnCustomer();
+                lastCustomerTime = now;
+            }
+
+            customers.forEach((c, index) => {
+                // Movement timing
+                if (now - c.moveTimer < 400) return; // Slow customer movement
+                c.moveTimer = now;
+
+                if (c.state === 'entering' || c.state === 'browsing') {
+                    // Move toward target
+                    if (c.x < c.targetX) c.x++;
+                    else if (c.x > c.targetX) c.x--;
+                    else if (c.y < c.targetY) c.y++;
+                    else if (c.y > c.targetY) c.y--;
+                    else {
+                        c.state = 'browsing';
+                    }
+                } else if (c.state === 'leaving') {
+                    // Move toward door
+                    if (c.y > 0) c.y--;
+                    else if (c.x < 6) c.x++;
+                    else if (c.x > 6) c.x--;
+                    else {
+                        // Reached door, remove customer
+                        customers.splice(index, 1);
+                    }
+                }
+            });
+        }
+
+        function helpCustomer() {
+            // Find nearby customer who needs help
+            const nearbyCustomer = customers.find(c =>
+                c.state === 'browsing' &&
+                Math.abs(c.x - player.x) <= 1 &&
+                Math.abs(c.y - player.y) <= 1
+            );
+
+            if (nearbyCustomer) {
+                nearbyCustomer.state = 'helped';
+                nearbyCustomer.helped = true;
+                customersHelped++;
+                playHelpSound();
+
+                // Add happy sparkles around customer
+                for (let i = 0; i < 6; i++) {
+                    sparkles.push({
+                        x: (nearbyCustomer.x + 0.5) * TILE_SIZE,
+                        y: (nearbyCustomer.y + 0.5) * TILE_SIZE,
+                        vx: (Math.random() - 0.5) * 5,
+                        vy: (Math.random() - 0.5) * 5,
+                        life: 1,
+                        color: '#ffd93d'
+                    });
+                }
+
+                // After a moment, they leave happy
+                setTimeout(() => {
+                    nearbyCustomer.state = 'leaving';
+                }, 800);
+
+                return true;
+            }
+            return false;
+        }
+
+        // ============================================
+        // INPUT HANDLING
+        // ============================================
+
+        const keys = {};
+        const ACTION_DELAY = 150; // Time between item actions (uniform rhythm)
+        const MOVE_DELAY = 165;   // Time between moves (chill but responsive)
+
+        // Track when keys were pressed for uniform timing
+        const keyPressTime = {};
+
+        document.addEventListener('keydown', (e) => {
+            // Music toggle
+            if (e.code === 'KeyM') {
+                e.preventDefault();
+                toggleMusic();
+                updateMusicButton();
+                return;
+            }
+
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyE', 'Space'].includes(e.code)) {
+                e.preventDefault();
+                initAudio(); // Init audio on first interaction
+
+                if (!keys[e.code]) {
+                    keys[e.code] = true;
+                    keyPressTime[e.code] = Date.now();
+                    // First action happens on first interval tick, not immediately
+                    // This creates uniform rhythm: wait → action → wait → action
+                }
+            }
+        });
+
+        function updateMusicButton() {
+            const btn = document.getElementById('musicBtn');
+            if (musicPlaying) {
+                btn.textContent = '🔇 Stop Music (M)';
+                btn.style.background = '#6b4a4a';
+            } else {
+                btn.textContent = '🎵 Play Music (M)';
+                btn.style.background = '#4a4a6a';
+            }
+        }
+        document.addEventListener('keyup', (e) => {
+            keys[e.code] = false;
+            keyPressTime[e.code] = 0;
+        });
+
+        // Unified action loop - checks all held keys at uniform intervals
+        let lastActionTime = 0;
+        let lastMoveTime = 0;
+
+        function gameLoop() {
+            const now = Date.now();
+
+            // Update customers
+            updateCustomers();
+
+            // Handle movement (arrow keys)
+            if (now - lastMoveTime >= MOVE_DELAY) {
+                if (keys['ArrowUp']) { handleMovement('ArrowUp'); lastMoveTime = now; }
+                else if (keys['ArrowDown']) { handleMovement('ArrowDown'); lastMoveTime = now; }
+                else if (keys['ArrowLeft']) { handleMovement('ArrowLeft'); lastMoveTime = now; }
+                else if (keys['ArrowRight']) { handleMovement('ArrowRight'); lastMoveTime = now; }
+            }
+
+            // Handle actions (E and Space)
+            if (now - lastActionTime >= ACTION_DELAY) {
+                if (keys['KeyE']) { handleAction('KeyE'); lastActionTime = now; }
+                else if (keys['Space']) { handleAction('Space'); lastActionTime = now; }
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+        gameLoop();
+
+        function handleMovement(code) {
+            let newX = player.x;
+            let newY = player.y;
+
+            switch(code) {
+                case 'ArrowUp': newY--; break;
+                case 'ArrowDown': newY++; break;
+                case 'ArrowLeft': newX--; break;
+                case 'ArrowRight': newX++; break;
+            }
+
+            // Bounds check
+            if (newX >= 0 && newX < GRID_W && newY >= 0 && newY < GRID_H) {
+                // Don't walk through shelves
+                const blocked = shelves.some(s => s.x === newX && s.y === newY);
+                if (!blocked) {
+                    player.x = newX;
+                    player.y = newY;
+                }
+            }
+
+            updateStatus();
+        }
+
+        function handleAction(code) {
+            switch(code) {
+                case 'KeyE': interact(); break;
+                case 'Space': pickupFromStockroom(); break;
+            }
+        }
+
+        function interact() {
+            // If in stockroom, E returns items
+            if (player.y >= stockroomY && player.holding > 0) {
+                player.holding--;
+                playReturn();
+                updateStatus();
+                return;
+            }
+
+            // Try to help a nearby customer first
+            if (helpCustomer()) {
+                updateStatus();
+                return;
+            }
+
+            // Check if next to a shelf
+            const adjacentShelf = shelves.find(s =>
+                Math.abs(s.x - player.x) + Math.abs(s.y - player.y) === 1
+            );
+
+            if (adjacentShelf && player.holding > 0) {
+                // Place item on shelf
+                if (adjacentShelf.items < adjacentShelf.maxItems && !adjacentShelf.complete) {
+                    adjacentShelf.items++;
+                    player.holding--;
+
+                    // Play progressive tone
+                    playShelfTone(adjacentShelf.items);
+
+                    // Check for completion
+                    if (adjacentShelf.items >= adjacentShelf.maxItems) {
+                        adjacentShelf.complete = true;
+                        setTimeout(() => {
+                            playComplete();
+                            // Add sparkles!
+                            for (let i = 0; i < 12; i++) {
+                                sparkles.push({
+                                    x: (adjacentShelf.x + 0.5) * TILE_SIZE,
+                                    y: (adjacentShelf.y + 0.5) * TILE_SIZE,
+                                    vx: (Math.random() - 0.5) * 8,
+                                    vy: (Math.random() - 0.5) * 8,
+                                    life: 1,
+                                    color: adjacentShelf.color
+                                });
+                            }
+                        }, 150);
+                    }
+                }
+            }
+            updateStatus();
+        }
+
+        // Play return sound
+        function playReturn() {
+            playTone(280, 0.08, 'triangle');
+        }
+
+        function pickupFromStockroom() {
+            // Must be in stockroom area and have room to carry
+            if (player.y >= stockroomY && player.holding < player.maxHold) {
+                player.holding++;
+                playPickup();
+            }
+            updateStatus();
+        }
+
+        let customersHelped = 0;
+
+        function updateStatus() {
+            const holding = player.holding > 0 ? `${player.holding}/${player.maxHold}` : 'Empty';
+            const complete = shelves.filter(s => s.complete).length;
+            const browsing = customers.filter(c => c.state === 'browsing').length;
+
+            let status = `Holding: ${holding} | Shelves: ${complete}/3 | Helped: ${customersHelped}`;
+            if (browsing > 0) {
+                status += ` | Customers need help: ${browsing}`;
+            }
+            statusEl.textContent = status;
+
+            // Check win condition
+            if (complete === 3) {
+                statusEl.textContent += ' | ALL SHELVES STOCKED!';
+                statusEl.style.color = '#ffd93d';
+            }
+        }
+
+        // ============================================
+        // RENDERING
+        // ============================================
+
+        function draw() {
+            // Clear with warm konbini floor color
+            ctx.fillStyle = '#f5e6d3';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw floor tiles (checkered pattern like konbini)
+            for (let y = 0; y < GRID_H; y++) {
+                for (let x = 0; x < GRID_W; x++) {
+                    if ((x + y) % 2 === 0) {
+                        ctx.fillStyle = '#efe0cc';
+                    } else {
+                        ctx.fillStyle = '#f5e6d3';
+                    }
+                    ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                }
+            }
+
+            // Subtle grid lines
+            ctx.strokeStyle = '#d4c4b0';
+            ctx.lineWidth = 1;
+            for (let x = 0; x <= GRID_W; x++) {
+                ctx.beginPath();
+                ctx.moveTo(x * TILE_SIZE, 0);
+                ctx.lineTo(x * TILE_SIZE, canvas.height);
+                ctx.stroke();
+            }
+            for (let y = 0; y <= GRID_H; y++) {
+                ctx.beginPath();
+                ctx.moveTo(0, y * TILE_SIZE);
+                ctx.lineTo(canvas.width, y * TILE_SIZE);
+                ctx.stroke();
+            }
+
+            // Draw door at top (automatic sliding doors style)
+            ctx.fillStyle = '#87CEEB';
+            ctx.fillRect(5 * TILE_SIZE, 0, 3 * TILE_SIZE, TILE_SIZE - 4);
+            ctx.fillStyle = '#4a90a4';
+            ctx.fillRect(5 * TILE_SIZE, 0, 3 * TILE_SIZE, 8);
+            ctx.fillStyle = '#2c5f6e';
+            ctx.font = 'bold 11px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('🚪 ENTRANCE', 6.5 * TILE_SIZE, TILE_SIZE/2 + 8);
+            ctx.textAlign = 'left';
+
+            // Draw stockroom area (back room feel)
+            ctx.fillStyle = '#c4b8a8';
+            ctx.fillRect(0, stockroomY * TILE_SIZE, canvas.width, (GRID_H - stockroomY) * TILE_SIZE);
+            // Boxes visual
+            ctx.fillStyle = '#a08060';
+            ctx.fillRect(10, stockroomY * TILE_SIZE + 10, 80, 60);
+            ctx.fillRect(canvas.width - 90, stockroomY * TILE_SIZE + 10, 80, 60);
+            ctx.fillStyle = '#8b7355';
+            ctx.font = '13px sans-serif';
+            ctx.fillText('📦 STOCKROOM - Hold SPACE to load items', 180, stockroomY * TILE_SIZE + 45);
+
+            // Draw shelves
+            shelves.forEach(shelf => {
+                const shelfX = shelf.x * TILE_SIZE;
+                const shelfY = shelf.y * TILE_SIZE;
+                const fillRatio = shelf.items / shelf.maxItems;
+
+                // Get the appropriate sprite
+                let shelfImg = null;
+                if (shelf.type === 'drinks') shelfImg = assets.shelfDrinks;
+                else if (shelf.type === 'snacks') shelfImg = assets.shelfSnacks;
+                else if (shelf.type === 'bento') shelfImg = assets.shelfBento;
+
+                if (shelfImg) {
+                    // Draw sprite (scaled to 2x2 tiles for better visibility)
+                    const size = TILE_SIZE * 2;
+
+                    // Dim if not fully stocked
+                    if (!shelf.complete) {
+                        ctx.globalAlpha = 0.4 + (fillRatio * 0.6);
+                    }
+
+                    // Glow effect when complete
+                    if (shelf.complete) {
+                        ctx.shadowColor = '#ffd93d';
+                        ctx.shadowBlur = 20;
+                    }
+
+                    ctx.drawImage(shelfImg, shelfX - TILE_SIZE/2, shelfY - TILE_SIZE/2, size, size);
+                    ctx.shadowBlur = 0;
+                    ctx.globalAlpha = 1;
+                } else {
+                    // Fallback to colored rectangle
+                    const brightness = 0.3 + (fillRatio * 0.7);
+                    ctx.fillStyle = shelf.complete ? shelf.color : adjustBrightness(shelf.color, brightness);
+                    if (shelf.complete) {
+                        ctx.shadowColor = shelf.color;
+                        ctx.shadowBlur = 15;
+                    }
+                    ctx.fillRect(shelfX + 4, shelfY + 4, TILE_SIZE - 8, TILE_SIZE - 8);
+                    ctx.shadowBlur = 0;
+                }
+
+                // Item count (always show)
+                ctx.fillStyle = '#000';
+                ctx.fillRect(shelfX + TILE_SIZE/2 - 18, shelfY + TILE_SIZE - 16, 36, 16);
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 12px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(
+                    `${shelf.items}/${shelf.maxItems}`,
+                    shelfX + TILE_SIZE/2,
+                    shelfY + TILE_SIZE - 4
+                );
+            });
+
+            ctx.textAlign = 'left';
+
+            // Draw player
+            const px = player.x * TILE_SIZE;
+            const py = player.y * TILE_SIZE;
+
+            if (assets.player) {
+                // Draw player sprite (scaled to fit tile)
+                ctx.drawImage(assets.player, px, py - 8, TILE_SIZE, TILE_SIZE + 8);
+            } else {
+                // Fallback to circle
+                ctx.fillStyle = player.color;
+                ctx.beginPath();
+                ctx.arc(px + TILE_SIZE/2, py + TILE_SIZE/2, TILE_SIZE/3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Draw held items indicator (stacked boxes above player)
+            if (player.holding > 0) {
+                const centerX = px + TILE_SIZE/2;
+
+                for (let i = 0; i < player.holding; i++) {
+                    ctx.fillStyle = '#8B4513';
+                    ctx.fillRect(centerX - 8, py - 12 - (i * 6), 16, 5);
+                    ctx.strokeStyle = '#5D3A1A';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(centerX - 8, py - 12 - (i * 6), 16, 5);
+                }
+
+                // Show count badge
+                ctx.fillStyle = '#ffd93d';
+                ctx.beginPath();
+                ctx.arc(centerX + 12, py - 8, 10, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#000';
+                ctx.font = 'bold 10px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(player.holding.toString(), centerX + 12, py - 4);
+                ctx.textAlign = 'left';
+            }
+
+            // Draw customers
+            customers.forEach(customer => {
+                const custX = customer.x * TILE_SIZE;
+                const custY = customer.y * TILE_SIZE;
+                const cx = custX + TILE_SIZE/2;
+                const cy = custY + TILE_SIZE/2;
+
+                if (assets.customer) {
+                    // Draw customer sprite (use front view - center third of image)
+                    const imgW = assets.customer.width / 3;
+                    const imgH = assets.customer.height;
+                    ctx.drawImage(
+                        assets.customer,
+                        imgW, 0, imgW, imgH,  // Source: middle third
+                        custX, custY - 8, TILE_SIZE, TILE_SIZE + 8  // Dest
+                    );
+                } else {
+                    // Fallback to circle
+                    ctx.fillStyle = customer.color;
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, TILE_SIZE/4, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+
+                // Thought bubble with what they want (only when browsing)
+                if (customer.state === 'browsing') {
+                    // Bubble background
+                    ctx.fillStyle = '#fff';
+                    ctx.beginPath();
+                    ctx.ellipse(cx + 20, cy - 30, 20, 14, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#333';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+
+                    // Bubble tail
+                    ctx.fillStyle = '#fff';
+                    ctx.beginPath();
+                    ctx.moveTo(cx + 8, cy - 18);
+                    ctx.lineTo(cx + 14, cy - 24);
+                    ctx.lineTo(cx + 18, cy - 18);
+                    ctx.fill();
+
+                    // Icon for what they want (emoji style)
+                    ctx.font = '14px sans-serif';
+                    ctx.textAlign = 'center';
+                    let emoji = '?';
+                    if (customer.want === 'drinks') emoji = '🥤';
+                    else if (customer.want === 'snacks') emoji = '🍪';
+                    else if (customer.want === 'bento') emoji = '🍱';
+                    ctx.fillText(emoji, cx + 20, cy - 26);
+                    ctx.textAlign = 'left';
+                }
+
+                // Happy hearts when helped
+                if (customer.state === 'helped') {
+                    ctx.font = '20px sans-serif';
+                    ctx.fillText('💕', cx - 8, cy - 25);
+                }
+            });
+
+            // Draw sparkles
+            sparkles.forEach((s, i) => {
+                ctx.fillStyle = s.color;
+                ctx.globalAlpha = s.life;
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, 4 * s.life, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+
+                // Update sparkle
+                s.x += s.vx;
+                s.y += s.vy;
+                s.life -= 0.02;
+            });
+
+            // Remove dead sparkles
+            for (let i = sparkles.length - 1; i >= 0; i--) {
+                if (sparkles[i].life <= 0) sparkles.splice(i, 1);
+            }
+
+            requestAnimationFrame(draw);
+        }
+
+        function adjustBrightness(hex, factor) {
+            // Convert hex to RGB, apply brightness, convert back
+            const r = parseInt(hex.slice(1,3), 16);
+            const g = parseInt(hex.slice(3,5), 16);
+            const b = parseInt(hex.slice(5,7), 16);
+
+            const newR = Math.min(255, Math.floor(r * factor));
+            const newG = Math.min(255, Math.floor(g * factor));
+            const newB = Math.min(255, Math.floor(b * factor));
+
+            return `rgb(${newR}, ${newG}, ${newB})`;
+        }
+
+        // Start game - load assets first
+        async function init() {
+            console.log('Loading assets...');
+            await loadAssets();
+            console.log('Dunkin Prototype v7.0 loaded! Pixel art + procedural cozy music.');
+            draw();
+            updateStatus();
+        }
+        init();
+    </script>
+</body>
+</html>

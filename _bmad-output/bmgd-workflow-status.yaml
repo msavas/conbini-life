@@ -1,0 +1,55 @@
+# Workflow Status (BMGD)
+# This tracks progress through BMGD methodology phases.
+# Implementation phase is tracked separately in sprint-status.yaml
+
+# STATUS DEFINITIONS:
+# ==================
+# Initial Status (before completion):
+#   - required: Must be completed to progress
+#   - optional: Can be completed but not required
+#   - recommended: Strongly suggested but not required
+#
+# Completion Status:
+#   - {file-path}: File created/found (e.g., "docs/gdd.md")
+#   - skipped: Optional workflow that was skipped
+
+generated: "2026-01-10"
+project: "Dunkin'"
+project_type: "game"
+selected_track: "quickflow"
+field_type: "greenfield"
+workflow_path: "quickflow-greenfield"
+
+workflow_status:
+  # Phase 0: Concept (Optional)
+  - phase: 0
+    name: "Concept"
+    workflows:
+      - id: "brainstorm-game"
+        name: "Brainstorm Game"
+        status: "_bmad-output/brainstorming-session-2026-01-10.md"  # COMPLETE
+        agent: "game-solo-dev"
+        command: "bmad:bmgd:workflows:brainstorm-game"
+
+  # Phase 1: Prototype
+  - phase: 1
+    name: "Prototype"
+    workflows:
+      - id: "quick-prototype"
+        name: "Quick Prototype"
+        status: "required"
+        agent: "game-solo-dev"
+        command: "bmad:bmgd:workflows:quick-prototype"
+        output: "Playable prototype"
+        note: "Test core mechanic quickly"
+
+  # Phase 2: Development
+  - phase: 2
+    name: "Development"
+    workflows:
+      - id: "quick-dev"
+        name: "Quick Dev"
+        status: "required"
+        agent: "game-solo-dev"
+        command: "bmad:bmgd:workflows:quick-dev"
+        note: "Iterative development - repeat as needed"
