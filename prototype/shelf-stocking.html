@@ -68,7 +68,8 @@
 </head>
 <body>
     <h1>🏪 コンビニ Master</h1>
-    <div class="instructions">Arrow Keys = Move | E = Checkout / Stock shelves | Space = Load items</div>
+    <div class="instructions">Arrow Keys / Left Stick = Move | E / X = Checkout / Stock | Space / Square = Load | M / Options = Music</div>
+    <div id="controllerStatus" style="margin-top: 5px; color: #8a8; font-size: 11px; height: 14px;"></div>
     <canvas id="game" width="672" height="528"></canvas>
     <div class="status" id="status">💴 ¥0 | いらっしゃいませ!</div>
     <div class="hint">Customers shop the shelves, then head to the register. Check them out with E!</div>
@@ -755,20 +756,90 @@
             keys[e.code] = false;
         });
 
+        // ============================================
+        // GAMEPAD (PS5 CONTROLLER) SUPPORT
+        // ============================================
+
+        const gamepadState = {
+            up: false,
+            down: false,
+            left: false,
+            right: false,
+            action: false,   // X button - checkout/stock
+            pickup: false    // Square button - pickup from stockroom
+        };
+
+        const STICK_DEADZONE = 0.3;
+        let lastMusicToggle = 0;
+        const controllerStatusEl = document.getElementById('controllerStatus');
+
+        window.addEventListener('gamepadconnected', (e) => {
+            controllerStatusEl.textContent = `🎮 ${e.gamepad.id.split('(')[0].trim()}`;
+            controllerStatusEl.style.color = '#6bcb77';
+            initAudio();
+        });
+
+        window.addEventListener('gamepaddisconnected', () => {
+            controllerStatusEl.textContent = '';
+        });
+
+        function pollGamepad() {
+            const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+
+            for (const gp of gamepads) {
+                if (!gp) continue;
+
+                // PS5 DualSense: 0=Cross, 2=Square, 9=Options
+                // D-pad: 12=Up, 13=Down, 14=Left, 15=Right
+                // Axes: 0=LeftStickX, 1=LeftStickY
+
+                const leftStickX = gp.axes[0] || 0;
+                const leftStickY = gp.axes[1] || 0;
+
+                gamepadState.up = gp.buttons[12]?.pressed || leftStickY < -STICK_DEADZONE;
+                gamepadState.down = gp.buttons[13]?.pressed || leftStickY > STICK_DEADZONE;
+                gamepadState.left = gp.buttons[14]?.pressed || leftStickX < -STICK_DEADZONE;
+                gamepadState.right = gp.buttons[15]?.pressed || leftStickX > STICK_DEADZONE;
+
+                gamepadState.action = gp.buttons[0]?.pressed;  // Cross (X)
+                gamepadState.pickup = gp.buttons[2]?.pressed;  // Square
+
+                // Options button for music toggle (with debounce)
+                const now = Date.now();
+                if (gp.buttons[9]?.pressed && now - lastMusicToggle > 500) {
+                    toggleMusic();
+                    updateMusicButton();
+                    lastMusicToggle = now;
+                }
+
+                if (gamepadState.action || gamepadState.pickup) {
+                    initAudio();
+                }
+
+                break;
+            }
+        }
+
         function gameLoop() {
             const now = Date.now();
+
+            // Poll gamepad
+            pollGamepad();
+
             updateCustomers();
 
+            // Movement (keyboard or gamepad)
             if (now - lastMoveTime >= 150) {
-                if (keys['ArrowUp']) { move(0, -1); lastMoveTime = now; }
-                else if (keys['ArrowDown']) { move(0, 1); lastMoveTime = now; }
-                else if (keys['ArrowLeft']) { move(-1, 0); lastMoveTime = now; }
-                else if (keys['ArrowRight']) { move(1, 0); lastMoveTime = now; }
+                if (keys['ArrowUp'] || gamepadState.up) { move(0, -1); lastMoveTime = now; }
+                else if (keys['ArrowDown'] || gamepadState.down) { move(0, 1); lastMoveTime = now; }
+                else if (keys['ArrowLeft'] || gamepadState.left) { move(-1, 0); lastMoveTime = now; }
+                else if (keys['ArrowRight'] || gamepadState.right) { move(1, 0); lastMoveTime = now; }
             }
 
+            // Actions (keyboard or gamepad)
             if (now - lastActionTime >= 150) {
-                if (keys['KeyE']) { interact(); lastActionTime = now; }
-                else if (keys['Space']) { pickupStock(); lastActionTime = now; }
+                if (keys['KeyE'] || gamepadState.action) { interact(); lastActionTime = now; }
+                else if (keys['Space'] || gamepadState.pickup) { pickupStock(); lastActionTime = now; }
             }
 
             requestAnimationFrame(gameLoop);
