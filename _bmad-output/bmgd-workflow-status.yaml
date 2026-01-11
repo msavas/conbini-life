@@ -34,7 +34,7 @@ workflow_status:
 
       - id: "game-brief"
         name: "Game Brief"
-        status: "required"  # NEXT
+        status: "_bmad-output/game-brief.md"  # COMPLETE
         agent: "game-designer"
         command: "bmad:bmgd:workflows:create-game-brief"
         note: "Formalize vision, pillars, scope, and risks"
