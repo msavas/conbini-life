@@ -8,48 +8,86 @@
 #   - required: Must be completed to progress
 #   - optional: Can be completed but not required
 #   - recommended: Strongly suggested but not required
+#   - conditional: Required only if certain conditions met
 #
 # Completion Status:
 #   - {file-path}: File created/found (e.g., "docs/gdd.md")
 #   - skipped: Optional workflow that was skipped
 
-generated: "2026-01-10"
+generated: "2026-01-11"
 project: "Dunkin'"
 project_type: "game"
-selected_track: "quickflow"
+selected_track: "gamedev"
 field_type: "greenfield"
-workflow_path: "quickflow-greenfield"
+workflow_path: "gamedev-greenfield"
 
 workflow_status:
-  # Phase 0: Concept (Optional)
+  # Phase 0: Pre-production (Optional)
   - phase: 0
-    name: "Concept"
+    name: "Pre-production"
     workflows:
       - id: "brainstorm-game"
         name: "Brainstorm Game"
         status: "_bmad-output/brainstorming-session-2026-01-10.md"  # COMPLETE
-        agent: "game-solo-dev"
+        agent: "game-designer"
         command: "bmad:bmgd:workflows:brainstorm-game"
 
-  # Phase 1: Prototype
-  - phase: 1
-    name: "Prototype"
-    workflows:
-      - id: "quick-prototype"
-        name: "Quick Prototype"
-        status: "required"
-        agent: "game-solo-dev"
-        command: "bmad:bmgd:workflows:quick-prototype"
-        output: "Playable prototype"
-        note: "Test core mechanic quickly"
+      - id: "game-brief"
+        name: "Game Brief"
+        status: "required"  # NEXT
+        agent: "game-designer"
+        command: "bmad:bmgd:workflows:create-game-brief"
+        note: "Formalize vision, pillars, scope, and risks"
 
-  # Phase 2: Development
-  - phase: 2
-    name: "Development"
+  # Phase 1: Design
+  - phase: 1
+    name: "Design"
     workflows:
-      - id: "quick-dev"
-        name: "Quick Dev"
+      - id: "gdd"
+        name: "Game Design Document"
         status: "required"
-        agent: "game-solo-dev"
-        command: "bmad:bmgd:workflows:quick-dev"
-        note: "Iterative development - repeat as needed"
+        agent: "game-designer"
+        command: "bmad:bmgd:workflows:gdd"
+        output: "Complete GDD with mechanics, systems, progression"
+
+      - id: "narrative"
+        name: "Narrative Design"
+        status: "conditional"  # if_narrative_focused - determined after GDD
+        agent: "game-designer"
+        command: "bmad:bmgd:workflows:narrative"
+        note: "For story-driven games - evaluate after GDD"
+
+  # Phase 2: Technical
+  - phase: 2
+    name: "Technical"
+    workflows:
+      - id: "game-architecture"
+        name: "Game Architecture"
+        status: "required"
+        agent: "game-architect"
+        command: "bmad:bmgd:workflows:game-architecture"
+        output: "Technical architecture with systems and patterns"
+
+      - id: "test-framework"
+        name: "Test Framework"
+        status: "recommended"
+        agent: "game-qa"
+        command: "bmad:bmgd:workflows:gametest-framework"
+        note: "Set up automated testing early"
+
+  # Phase 3: Production
+  - phase: 3
+    name: "Production"
+    workflows:
+      - id: "sprint-planning"
+        name: "Sprint Planning"
+        status: "required"
+        agent: "game-scrum-master"
+        command: "bmad:bmgd:workflows:sprint-planning"
+        note: "Creates sprint plan - subsequent work tracked in sprint-status.yaml"
+
+# Existing Assets
+existing_artifacts:
+  brainstorm: "_bmad-output/brainstorming-session-2026-01-10.md"
+  prototype: "prototype/shelf-stocking.html"
+  prototype_assets: "prototype/assets/"
