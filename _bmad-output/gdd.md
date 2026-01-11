@@ -1,5 +1,5 @@
 ---
-stepsCompleted: [1, 2]
+stepsCompleted: [1, 2, 3, 4]
 inputDocuments:
   - "_bmad-output/game-brief.md"
   - "_bmad-output/brainstorming-session-2026-01-10.md"
@@ -9,7 +9,7 @@ documentCounts:
   brainstorming: 1
   projectDocs: 0
 workflowType: 'gdd'
-lastStep: 2
+lastStep: 4
 project_name: 'Conbini Life'
 user_name: 'Big Dogs'
 date: '2026-01-11'
@@ -21,7 +21,7 @@ game_name: 'Conbini Life'
 
 **Author:** Big Dogs
 **Game Type:** Simulation (Cozy Work Sim)
-**Target Platform(s):** {{platforms}}
+**Target Platform(s):** Web Browser (HTML5 Canvas, Vanilla JS)
 
 ---
 
@@ -46,11 +46,35 @@ This is the game you reluctantly close. One more shelf to stock, one more regula
 
 ### Target Audience
 
-{{target_audience}}
+**Primary:** Casual gamers aged 18-35, primarily working adults who use games to decompress. They know and love Stardew Valley, Animal Crossing, and similar cozy titles. They play during wind-down hours - after work, before bed, weekend mornings with coffee.
+
+**Demographics:**
+- Age 18-35, skewing toward working professionals
+- Platform-flexible but appreciate low-friction browser access
+- Time-limited but willing to invest in the right game
+
+**Gaming Experience:** Casual-Core - Players familiar with cozy game conventions but not seeking hardcore challenge. They want depth without complexity, progression without pressure.
+
+**Genre Familiarity:** High familiarity with cozy sim tropes (Stardew, Animal Crossing, Unpacking). They'll recognize and appreciate seasonal rhythms, progression unlocks, and relationship-building without needing tutorials.
+
+**Session Length:** 15-45 minutes typical - Long enough to complete a satisfying work shift, short enough to fit into wind-down routines.
+
+**Player Motivations:**
+- Decompression from stressful days into low-stakes calm
+- Quiet accomplishment - satisfaction of a job done well
+- Cozy escapism - a peaceful corner of Japan to visit
+- Routine as comfort - the rhythm of work becomes rest
+
+**Secondary Audience:** People curious about Japanese culture who want an authentic, chill window into everyday Japan - without the anime deep-dive
 
 ### Unique Selling Points (USPs)
 
-{{unique_selling_points}}
+1. **Authentic Japanese Konbini Setting** - Real culture, not fantasy farm. Modern-day Japan through the lens of everyday life.
+2. **The Commute as Ritual** - The bike ride is the meditation. Sunrise through rice fields, cherry blossoms, autumn leaves, winter snow.
+3. **Work Sim, Not Life Sim** - Be great at your job without managing a whole life. No hunger meters, no relationship drama.
+4. **Audio-Driven Core Toy** - Shelf-stocking with rising pitch feedback (1-9) creates meditative rhythm. The ka-ching is the reward.
+
+**Competitive Positioning:** Stardew Valley meets Japanese convenience store culture - the cozy work sim where the commute is the meditation and the job is the therapy.
 
 ---
 
@@ -58,11 +82,18 @@ This is the game you reluctantly close. One more shelf to stock, one more regula
 
 ### Project Goals
 
-{{goals}}
+1. **Create a Rabid Fanbase** - Build something players can't stop talking about. Word-of-mouth is the only marketing strategy.
+2. **Have Fun Making It** - AI-assisted game dev experiment. The process should be as enjoyable as the product.
+3. **Have Fun Playing It** - We are the first players. If we don't want to keep playing, neither will anyone else.
+4. **See How Far We Can Go** - No artificial constraints. Ship when it's good, iterate fast, explore.
 
 ### Background and Rationale
 
-{{context}}
+**Why This Game:** No authentic Japanese work-sim that's actually chill. The cozy market is proven but dominated by fantasy farms and rural settings. Nobody's made the urban Japan cozy experience.
+
+**Why Now:** AI-assisted development changes the constraints. Small team with Claude punches above its weight. Traditional blockers matter less - we focus on feel and polish.
+
+**Why Us:** Genuine appreciation for konbini culture without the otaku baggage. Slice-of-life authenticity. The prototype already proves the core toy works.
 
 ---
 
