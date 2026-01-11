@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dunkin' - Shelf Stocking Prototype</title>
+    <title>Dunkin' - Konbini Simulator</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -43,17 +43,17 @@
     </style>
 </head>
 <body>
-    <h1>Dunkin' - Shelf Stocking</h1>
-    <div class="instructions">Arrow Keys = Move | Hold E = Stock shelves / Help customers | Hold Space = Load items</div>
+    <h1>Dunkin' - Konbini Simulator</h1>
+    <div class="instructions">Arrow Keys = Move | E = Checkout customers / Stock shelves | Space = Load items from stockroom</div>
     <canvas id="game" width="640" height="480"></canvas>
-    <div class="status" id="status">Holding: Empty | Shelves: 0/3 | Helped: 0</div>
-    <div class="hint">Customers will enter and browse. Walk up to them and press E to help!</div>
+    <div class="status" id="status">Sales: $0 | Shelves need stock!</div>
+    <div class="hint">Customers shop the shelves, then head to the register. Check them out with E!</div>
     <button id="musicBtn" onclick="toggleMusic(); updateMusicButton();" style="margin-top: 15px; padding: 10px 20px; background: #4a4a6a; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-size: 14px;">🎵 Play Music (M)</button>
 
     <script>
         // ============================================
-        // DUNKIN' SHELF-STOCKING PROTOTYPE
-        // Testing: Grid movement, item placement, audio feedback
+        // DUNKIN' KONBINI SIMULATOR v8.0
+        // Full shopping loop: Browse → Shop → Checkout
         // ============================================
 
         const canvas = document.getElementById('game');
@@ -85,18 +85,16 @@
 
         // Play progressive tone based on shelf fill (1-10)
         function playShelfTone(count) {
-            // Base frequency 220Hz, goes up ~50Hz per item
             const freq = 220 + (count * 50);
             playTone(freq, 0.12, 'square');
         }
 
         // Play completion sound (ka-ching!)
         function playComplete() {
-            // Arpeggio for satisfaction
-            setTimeout(() => playTone(523, 0.1, 'sine'), 0);    // C5
-            setTimeout(() => playTone(659, 0.1, 'sine'), 80);   // E5
-            setTimeout(() => playTone(784, 0.15, 'sine'), 160); // G5
-            setTimeout(() => playTone(1047, 0.3, 'sine'), 240); // C6
+            setTimeout(() => playTone(523, 0.1, 'sine'), 0);
+            setTimeout(() => playTone(659, 0.1, 'sine'), 80);
+            setTimeout(() => playTone(784, 0.15, 'sine'), 160);
+            setTimeout(() => playTone(1047, 0.3, 'sine'), 240);
         }
 
         // Play pickup sound
@@ -104,35 +102,43 @@
             playTone(330, 0.08, 'triangle');
         }
 
+        // Play cash register sound
+        function playCashRegister() {
+            setTimeout(() => playTone(800, 0.05, 'square'), 0);
+            setTimeout(() => playTone(1000, 0.05, 'square'), 50);
+            setTimeout(() => playTone(1200, 0.1, 'sine'), 100);
+            setTimeout(() => playTone(1600, 0.15, 'sine'), 150);
+        }
+
+        // Play item grab sound
+        function playGrab() {
+            playTone(440, 0.06, 'triangle');
+        }
+
         // ============================================
         // UPBEAT KONBINI MUSIC GENERATOR
-        // Happy, bouncy, friendly vibes!
         // ============================================
 
         let musicPlaying = false;
         let musicNodes = {};
         let musicTimeouts = [];
 
-        // Musical constants - UPBEAT tempo!
         const BPM = 128;
         const BEAT_TIME = 60 / BPM;
 
-        // Major pentatonic in C - bright and happy
         const NOTES = {
             C3: 130.81, D3: 146.83, E3: 164.81, G3: 196.00, A3: 220.00,
             C4: 261.63, D4: 293.66, E4: 329.63, G4: 392.00, A4: 440.00,
             C5: 523.25, D5: 587.33, E5: 659.25, G5: 783.99, A5: 880.00,
         };
 
-        // Happy chord progression (I - V - vi - IV in C)
         const CHORD_PROGRESSION = [
-            { root: 'C', notes: [NOTES.C3, NOTES.E3, NOTES.G3] },      // C major - happy!
-            { root: 'G', notes: [NOTES.G3, NOTES.D4, NOTES.G4] },      // G major - bright
-            { root: 'A', notes: [NOTES.A3, NOTES.C4, NOTES.E4] },      // A minor - gentle
-            { root: 'F', notes: [NOTES.G3, NOTES.C4, NOTES.E4] },      // F major (as G sus)
+            { root: 'C', notes: [NOTES.C3, NOTES.E3, NOTES.G3] },
+            { root: 'G', notes: [NOTES.G3, NOTES.D4, NOTES.G4] },
+            { root: 'A', notes: [NOTES.A3, NOTES.C4, NOTES.E4] },
+            { root: 'F', notes: [NOTES.G3, NOTES.C4, NOTES.E4] },
         ];
 
-        // Bouncy melody patterns - more notes, more movement!
         const HAPPY_MELODIES = [
             ['C5', 'E5', 'G5', 'E5', 'C5', 'D5', 'E5', 'G5'],
             ['G5', 'E5', 'D5', 'C5', 'D5', 'E5', 'G5', 'A5'],
@@ -140,8 +146,7 @@
             ['C5', 'C5', 'G4', 'G4', 'A4', 'A4', 'G4', null],
         ];
 
-        // Bass patterns - bouncy octaves
-        const BASS_PATTERN = [1, 0, 1, 0, 1, 1, 0, 1]; // 1 = play, 0 = rest
+        const BASS_PATTERN = [1, 0, 1, 0, 1, 1, 0, 1];
 
         function createMusicContext() {
             if (!audioCtx) {
@@ -163,16 +168,14 @@
             musicPlaying = true;
             musicTimeouts = [];
 
-            // Master gain
             const masterGain = ctx.createGain();
             masterGain.gain.value = 0.35;
             masterGain.connect(ctx.destination);
             musicNodes.master = masterGain;
 
-            // Light reverb (short, bright)
             const convolver = ctx.createConvolver();
             const sampleRate = ctx.sampleRate;
-            const length = sampleRate * 0.5; // Short reverb
+            const length = sampleRate * 0.5;
             const impulse = ctx.createBuffer(2, length, sampleRate);
 
             for (let channel = 0; channel < 2; channel++) {
@@ -195,7 +198,6 @@
             musicNodes.dry = dryGain;
             musicNodes.wet = convolver;
 
-            // Start all layers
             startChordLayer(ctx, dryGain);
             startMelodyLayer(ctx, dryGain, convolver);
             startBassLayer(ctx, dryGain);
@@ -218,7 +220,7 @@
                     const gain = ctx.createGain();
 
                     osc.type = 'triangle';
-                    osc.frequency.value = freq * 2; // One octave up for brightness
+                    osc.frequency.value = freq * 2;
 
                     osc.connect(gain);
                     gain.connect(output);
@@ -253,7 +255,6 @@
                 if (noteName && NOTES[noteName]) {
                     const freq = NOTES[noteName];
 
-                    // Bright, plucky synth
                     const osc = ctx.createOscillator();
                     const osc2 = ctx.createOscillator();
                     const gain = ctx.createGain();
@@ -283,12 +284,10 @@
                     gain.connect(wet);
 
                     const now = ctx.currentTime;
-                    // Snappy envelope
                     gain.gain.setValueAtTime(0.2, now);
                     gain.gain.exponentialRampToValueAtTime(0.1, now + 0.05);
                     gain.gain.exponentialRampToValueAtTime(0.01, now + BEAT_TIME * 0.8);
 
-                    // Filter sweep for brightness
                     filter.frequency.setValueAtTime(4000, now);
                     filter.frequency.exponentialRampToValueAtTime(1500, now + 0.1);
 
@@ -319,7 +318,7 @@
 
                 if (BASS_PATTERN[beatIndex]) {
                     const chord = CHORD_PROGRESSION[chordIndex];
-                    const freq = chord.notes[0]; // Root note
+                    const freq = chord.notes[0];
 
                     const osc = ctx.createOscillator();
                     const gain = ctx.createGain();
@@ -364,7 +363,6 @@
 
                 const now = ctx.currentTime;
 
-                // Kick on 1 and 3
                 if (beat % 4 === 0) {
                     const osc = ctx.createOscillator();
                     const gain = ctx.createGain();
@@ -379,7 +377,6 @@
                     osc.stop(now + 0.15);
                 }
 
-                // Snappy snare on 2 and 4
                 if (beat % 4 === 2) {
                     const noise = ctx.createBufferSource();
                     const buffer = ctx.createBuffer(1, ctx.sampleRate * 0.1, ctx.sampleRate);
@@ -405,7 +402,6 @@
                     noise.stop(now + 0.1);
                 }
 
-                // Hi-hat on every 8th note
                 const hihatVol = (beat % 2 === 0) ? 0.06 : 0.03;
                 const noise = ctx.createBufferSource();
                 const buffer = ctx.createBuffer(1, ctx.sampleRate * 0.03, ctx.sampleRate);
@@ -439,14 +435,14 @@
         function startArpLayer(ctx, dry, wet) {
             let chordIndex = 0;
             let arpIndex = 0;
-            const arpPattern = [0, 1, 2, 1]; // Which chord note to play
+            const arpPattern = [0, 1, 2, 1];
 
             function playArp() {
                 if (!musicPlaying) return;
 
                 const chord = CHORD_PROGRESSION[chordIndex];
                 const noteIdx = arpPattern[arpIndex % arpPattern.length];
-                const freq = chord.notes[noteIdx] * 4; // Two octaves up - sparkly!
+                const freq = chord.notes[noteIdx] * 4;
 
                 const osc = ctx.createOscillator();
                 const gain = ctx.createGain();
@@ -479,7 +475,6 @@
 
         function stopMusic() {
             musicPlaying = false;
-            // Clear all scheduled notes
             musicTimeouts.forEach(id => clearTimeout(id));
             musicTimeouts = [];
             if (musicNodes.master) {
@@ -547,136 +542,235 @@
 
         // Player
         const player = {
-            x: 6,
+            x: 11,
             y: 5,
-            holding: 0,      // Number of items held (0-6)
-            maxHold: 6,      // Max items player can carry
+            holding: 0,
+            maxHold: 6,
             color: '#ff6b6b'
         };
 
-        // Shelves (3 shelves, each holds 10 items)
+        // Register location (right side of store)
+        const register = {
+            x: 11,
+            y: 4,
+            color: '#8B4513'
+        };
+
+        // Shelves (start with some stock, but not full)
         const shelves = [
-            { x: 2, y: 2, items: 3, maxItems: 10, type: 'drinks', color: '#4ecdc4', complete: false },
-            { x: 6, y: 2, items: 5, maxItems: 10, type: 'snacks', color: '#ffe66d', complete: false },
-            { x: 10, y: 2, items: 1, maxItems: 10, type: 'bento', color: '#ff8b94', complete: false }
+            { x: 2, y: 2, items: 8, maxItems: 10, type: 'drinks', color: '#4ecdc4', price: 2 },
+            { x: 6, y: 2, items: 7, maxItems: 10, type: 'snacks', color: '#ffe66d', price: 3 },
+            { x: 10, y: 2, items: 6, maxItems: 10, type: 'bento', color: '#ff8b94', price: 5 }
         ];
 
-        // Stockroom area (bottom of screen)
+        // Stockroom area
         const stockroomY = 8;
+
+        // Game stats
+        let totalSales = 0;
+        let customersServed = 0;
 
         // Sparkle effects
         const sparkles = [];
 
-        // Customers
+        // ============================================
+        // CUSTOMER SYSTEM - Full Shopping Loop
+        // ============================================
+
         const customers = [];
-        let lastCustomerTime = Date.now(); // Start counting from now
-        const CUSTOMER_INTERVAL = 5000; // First customer after 5 seconds, then every 8
-        const CUSTOMER_TYPES = ['drinks', 'snacks', 'bento'];
+        let lastCustomerTime = Date.now();
+        const CUSTOMER_INTERVAL = 6000; // New customer every 6 seconds
+        const MAX_CUSTOMERS = 3;
+
         const CUSTOMER_COLORS = ['#e8b4b8', '#b4d4e8', '#d4e8b4', '#e8d4b4'];
 
-        function spawnCustomer() {
-            const type = CUSTOMER_TYPES[Math.floor(Math.random() * CUSTOMER_TYPES.length)];
-            const targetShelf = shelves.find(s => s.type === type);
+        // Customer states:
+        // 'entering' - walking into store
+        // 'shopping' - walking to a shelf
+        // 'grabbing' - taking items from shelf
+        // 'to_register' - walking to register
+        // 'waiting' - waiting at register for checkout
+        // 'leaving' - exiting store
 
-            // Find a spot near the shelf they're interested in
-            const targetX = targetShelf.x + (Math.random() > 0.5 ? 1 : -1);
-            const targetY = targetShelf.y + 1 + Math.floor(Math.random() * 2);
+        function spawnCustomer() {
+            // Decide how many items they want to buy (1-3)
+            const itemsToBuy = 1 + Math.floor(Math.random() * 3);
+
+            // Create shopping list (which shelf types to visit)
+            const shelfTypes = ['drinks', 'snacks', 'bento'];
+            const shoppingList = [];
+            for (let i = 0; i < itemsToBuy; i++) {
+                const type = shelfTypes[Math.floor(Math.random() * shelfTypes.length)];
+                shoppingList.push(type);
+            }
 
             const customer = {
-                x: 6,  // Start at door
+                x: 6,
                 y: 0,
-                targetX: Math.max(1, Math.min(GRID_W - 2, targetX)),
-                targetY: Math.min(stockroomY - 1, targetY),
-                want: type,
+                targetX: 6,
+                targetY: 1,
                 color: CUSTOMER_COLORS[Math.floor(Math.random() * CUSTOMER_COLORS.length)],
-                state: 'entering', // entering, browsing, helped, leaving
-                helped: false,
-                moveTimer: 0
+                state: 'entering',
+                shoppingList: shoppingList, // What they want to buy
+                cart: [], // Items they've grabbed
+                currentShopIndex: 0, // Which item in shopping list they're getting
+                moveTimer: 0,
+                grabTimer: 0,
+                waitTime: 0
             };
             customers.push(customer);
             playDoorSound();
         }
 
         function playDoorSound() {
-            // Ding-dong door chime
-            setTimeout(() => playTone(659, 0.15, 'sine'), 0);   // E5
-            setTimeout(() => playTone(523, 0.2, 'sine'), 150);  // C5
+            setTimeout(() => playTone(659, 0.15, 'sine'), 0);
+            setTimeout(() => playTone(523, 0.2, 'sine'), 150);
         }
 
-        function playHelpSound() {
-            // Happy little jingle
-            setTimeout(() => playTone(523, 0.1, 'sine'), 0);    // C5
-            setTimeout(() => playTone(659, 0.1, 'sine'), 100);  // E5
-            setTimeout(() => playTone(784, 0.15, 'sine'), 200); // G5
+        function getShelfByType(type) {
+            return shelves.find(s => s.type === type);
         }
 
         function updateCustomers() {
             const now = Date.now();
 
-            // Spawn new customer periodically (max 2 at a time for chill vibes)
-            if (now - lastCustomerTime > CUSTOMER_INTERVAL && customers.length < 2) {
+            // Spawn new customers
+            if (now - lastCustomerTime > CUSTOMER_INTERVAL && customers.length < MAX_CUSTOMERS) {
                 spawnCustomer();
                 lastCustomerTime = now;
             }
 
             customers.forEach((c, index) => {
                 // Movement timing
-                if (now - c.moveTimer < 400) return; // Slow customer movement
+                if (now - c.moveTimer < 350) return;
                 c.moveTimer = now;
 
-                if (c.state === 'entering' || c.state === 'browsing') {
-                    // Move toward target
-                    if (c.x < c.targetX) c.x++;
-                    else if (c.x > c.targetX) c.x--;
-                    else if (c.y < c.targetY) c.y++;
-                    else if (c.y > c.targetY) c.y--;
-                    else {
-                        c.state = 'browsing';
-                    }
-                } else if (c.state === 'leaving') {
-                    // Move toward door
-                    if (c.y > 0) c.y--;
-                    else if (c.x < 6) c.x++;
-                    else if (c.x > 6) c.x--;
-                    else {
-                        // Reached door, remove customer
-                        customers.splice(index, 1);
-                    }
+                switch (c.state) {
+                    case 'entering':
+                        // Move into the store
+                        if (c.y < 3) {
+                            c.y++;
+                        } else {
+                            c.state = 'shopping';
+                            setNextShoppingTarget(c);
+                        }
+                        break;
+
+                    case 'shopping':
+                        // Move toward target shelf
+                        if (moveToward(c, c.targetX, c.targetY)) {
+                            // Arrived at shelf
+                            c.state = 'grabbing';
+                            c.grabTimer = now;
+                        }
+                        break;
+
+                    case 'grabbing':
+                        // Take a moment to grab item
+                        if (now - c.grabTimer > 800) {
+                            const wantType = c.shoppingList[c.currentShopIndex];
+                            const shelf = getShelfByType(wantType);
+
+                            if (shelf && shelf.items > 0) {
+                                // Take item from shelf
+                                shelf.items--;
+                                c.cart.push({ type: wantType, price: shelf.price });
+                                playGrab();
+                            }
+
+                            c.currentShopIndex++;
+
+                            // More items to get?
+                            if (c.currentShopIndex < c.shoppingList.length) {
+                                c.state = 'shopping';
+                                setNextShoppingTarget(c);
+                            } else {
+                                // Done shopping, head to register
+                                c.state = 'to_register';
+                                c.targetX = register.x - 1;
+                                c.targetY = register.y;
+                            }
+                        }
+                        break;
+
+                    case 'to_register':
+                        // Walk to register
+                        if (moveToward(c, c.targetX, c.targetY)) {
+                            c.state = 'waiting';
+                            c.waitTime = now;
+                        }
+                        break;
+
+                    case 'waiting':
+                        // Wait for player to check them out
+                        // (Player interaction handles state change)
+                        break;
+
+                    case 'leaving':
+                        // Exit the store
+                        if (c.y > 0) {
+                            c.y--;
+                        } else if (c.x !== 6) {
+                            c.x += c.x < 6 ? 1 : -1;
+                        } else {
+                            // Remove customer
+                            customers.splice(index, 1);
+                        }
+                        break;
                 }
             });
         }
 
-        function helpCustomer() {
-            // Find nearby customer who needs help
-            const nearbyCustomer = customers.find(c =>
-                c.state === 'browsing' &&
+        function setNextShoppingTarget(customer) {
+            const wantType = customer.shoppingList[customer.currentShopIndex];
+            const shelf = getShelfByType(wantType);
+            if (shelf) {
+                // Stand in front of shelf (below it)
+                customer.targetX = shelf.x;
+                customer.targetY = shelf.y + 1;
+            }
+        }
+
+        function moveToward(entity, targetX, targetY) {
+            if (entity.x < targetX) entity.x++;
+            else if (entity.x > targetX) entity.x--;
+            else if (entity.y < targetY) entity.y++;
+            else if (entity.y > targetY) entity.y--;
+            else return true; // Arrived
+            return false;
+        }
+
+        function checkoutCustomer() {
+            // Find customer waiting at register
+            const waitingCustomer = customers.find(c =>
+                c.state === 'waiting' &&
                 Math.abs(c.x - player.x) <= 1 &&
                 Math.abs(c.y - player.y) <= 1
             );
 
-            if (nearbyCustomer) {
-                nearbyCustomer.state = 'helped';
-                nearbyCustomer.helped = true;
-                customersHelped++;
-                playHelpSound();
+            if (waitingCustomer && waitingCustomer.cart.length > 0) {
+                // Calculate total
+                const total = waitingCustomer.cart.reduce((sum, item) => sum + item.price, 0);
+                totalSales += total;
+                customersServed++;
 
-                // Add happy sparkles around customer
-                for (let i = 0; i < 6; i++) {
+                // Play cash register sound
+                playCashRegister();
+
+                // Happy sparkles
+                for (let i = 0; i < 8; i++) {
                     sparkles.push({
-                        x: (nearbyCustomer.x + 0.5) * TILE_SIZE,
-                        y: (nearbyCustomer.y + 0.5) * TILE_SIZE,
-                        vx: (Math.random() - 0.5) * 5,
-                        vy: (Math.random() - 0.5) * 5,
+                        x: (waitingCustomer.x + 0.5) * TILE_SIZE,
+                        y: (waitingCustomer.y + 0.5) * TILE_SIZE,
+                        vx: (Math.random() - 0.5) * 6,
+                        vy: (Math.random() - 0.5) * 6,
                         life: 1,
                         color: '#ffd93d'
                     });
                 }
 
-                // After a moment, they leave happy
-                setTimeout(() => {
-                    nearbyCustomer.state = 'leaving';
-                }, 800);
-
+                // Customer leaves happy
+                waitingCustomer.state = 'leaving';
                 return true;
             }
             return false;
@@ -687,14 +781,12 @@
         // ============================================
 
         const keys = {};
-        const ACTION_DELAY = 150; // Time between item actions (uniform rhythm)
-        const MOVE_DELAY = 165;   // Time between moves (chill but responsive)
+        const ACTION_DELAY = 150;
+        const MOVE_DELAY = 165;
 
-        // Track when keys were pressed for uniform timing
         const keyPressTime = {};
 
         document.addEventListener('keydown', (e) => {
-            // Music toggle
             if (e.code === 'KeyM') {
                 e.preventDefault();
                 toggleMusic();
@@ -704,13 +796,11 @@
 
             if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyE', 'Space'].includes(e.code)) {
                 e.preventDefault();
-                initAudio(); // Init audio on first interaction
+                initAudio();
 
                 if (!keys[e.code]) {
                     keys[e.code] = true;
                     keyPressTime[e.code] = Date.now();
-                    // First action happens on first interval tick, not immediately
-                    // This creates uniform rhythm: wait → action → wait → action
                 }
             }
         });
@@ -725,22 +815,21 @@
                 btn.style.background = '#4a4a6a';
             }
         }
+
         document.addEventListener('keyup', (e) => {
             keys[e.code] = false;
             keyPressTime[e.code] = 0;
         });
 
-        // Unified action loop - checks all held keys at uniform intervals
         let lastActionTime = 0;
         let lastMoveTime = 0;
 
         function gameLoop() {
             const now = Date.now();
 
-            // Update customers
             updateCustomers();
 
-            // Handle movement (arrow keys)
+            // Movement
             if (now - lastMoveTime >= MOVE_DELAY) {
                 if (keys['ArrowUp']) { handleMovement('ArrowUp'); lastMoveTime = now; }
                 else if (keys['ArrowDown']) { handleMovement('ArrowDown'); lastMoveTime = now; }
@@ -748,7 +837,7 @@
                 else if (keys['ArrowRight']) { handleMovement('ArrowRight'); lastMoveTime = now; }
             }
 
-            // Handle actions (E and Space)
+            // Actions
             if (now - lastActionTime >= ACTION_DELAY) {
                 if (keys['KeyE']) { handleAction('KeyE'); lastActionTime = now; }
                 else if (keys['Space']) { handleAction('Space'); lastActionTime = now; }
@@ -769,11 +858,11 @@
                 case 'ArrowRight': newX++; break;
             }
 
-            // Bounds check
             if (newX >= 0 && newX < GRID_W && newY >= 0 && newY < GRID_H) {
-                // Don't walk through shelves
-                const blocked = shelves.some(s => s.x === newX && s.y === newY);
-                if (!blocked) {
+                // Don't walk through shelves or register
+                const blockedByShelf = shelves.some(s => s.x === newX && s.y === newY);
+                const blockedByRegister = (newX === register.x && newY === register.y);
+                if (!blockedByShelf && !blockedByRegister) {
                     player.x = newX;
                     player.y = newY;
                 }
@@ -790,64 +879,47 @@
         }
 
         function interact() {
-            // If in stockroom, E returns items
-            if (player.y >= stockroomY && player.holding > 0) {
-                player.holding--;
-                playReturn();
+            // Priority 1: Checkout customer at register
+            if (checkoutCustomer()) {
                 updateStatus();
                 return;
             }
 
-            // Try to help a nearby customer first
-            if (helpCustomer()) {
-                updateStatus();
-                return;
-            }
-
-            // Check if next to a shelf
+            // Priority 2: Stock a shelf if holding items
             const adjacentShelf = shelves.find(s =>
                 Math.abs(s.x - player.x) + Math.abs(s.y - player.y) === 1
             );
 
             if (adjacentShelf && player.holding > 0) {
-                // Place item on shelf
-                if (adjacentShelf.items < adjacentShelf.maxItems && !adjacentShelf.complete) {
+                if (adjacentShelf.items < adjacentShelf.maxItems) {
                     adjacentShelf.items++;
                     player.holding--;
-
-                    // Play progressive tone
                     playShelfTone(adjacentShelf.items);
 
-                    // Check for completion
+                    // Sparkle if fully stocked
                     if (adjacentShelf.items >= adjacentShelf.maxItems) {
-                        adjacentShelf.complete = true;
-                        setTimeout(() => {
-                            playComplete();
-                            // Add sparkles!
-                            for (let i = 0; i < 12; i++) {
-                                sparkles.push({
-                                    x: (adjacentShelf.x + 0.5) * TILE_SIZE,
-                                    y: (adjacentShelf.y + 0.5) * TILE_SIZE,
-                                    vx: (Math.random() - 0.5) * 8,
-                                    vy: (Math.random() - 0.5) * 8,
-                                    life: 1,
-                                    color: adjacentShelf.color
-                                });
-                            }
-                        }, 150);
+                        playComplete();
+                        for (let i = 0; i < 10; i++) {
+                            sparkles.push({
+                                x: (adjacentShelf.x + 0.5) * TILE_SIZE,
+                                y: (adjacentShelf.y + 0.5) * TILE_SIZE,
+                                vx: (Math.random() - 0.5) * 6,
+                                vy: (Math.random() - 0.5) * 6,
+                                life: 1,
+                                color: adjacentShelf.color
+                            });
+                        }
                     }
                 }
             }
             updateStatus();
         }
 
-        // Play return sound
         function playReturn() {
             playTone(280, 0.08, 'triangle');
         }
 
         function pickupFromStockroom() {
-            // Must be in stockroom area and have room to carry
             if (player.y >= stockroomY && player.holding < player.maxHold) {
                 player.holding++;
                 playPickup();
@@ -855,24 +927,23 @@
             updateStatus();
         }
 
-        let customersHelped = 0;
-
         function updateStatus() {
-            const holding = player.holding > 0 ? `${player.holding}/${player.maxHold}` : 'Empty';
-            const complete = shelves.filter(s => s.complete).length;
-            const browsing = customers.filter(c => c.state === 'browsing').length;
+            const waiting = customers.filter(c => c.state === 'waiting').length;
+            const lowStock = shelves.filter(s => s.items <= 3).length;
 
-            let status = `Holding: ${holding} | Shelves: ${complete}/3 | Helped: ${customersHelped}`;
-            if (browsing > 0) {
-                status += ` | Customers need help: ${browsing}`;
+            let status = `💰 Sales: $${totalSales} | 👥 Served: ${customersServed}`;
+
+            if (waiting > 0) {
+                status += ` | ⏳ Waiting: ${waiting}`;
             }
+            if (lowStock > 0) {
+                status += ` | ⚠️ Low stock: ${lowStock}`;
+            }
+            if (player.holding > 0) {
+                status += ` | 📦 Carrying: ${player.holding}`;
+            }
+
             statusEl.textContent = status;
-
-            // Check win condition
-            if (complete === 3) {
-                statusEl.textContent += ' | ALL SHELVES STOCKED!';
-                statusEl.style.color = '#ffd93d';
-            }
         }
 
         // ============================================
@@ -880,23 +951,19 @@
         // ============================================
 
         function draw() {
-            // Clear with warm konbini floor color
+            // Background
             ctx.fillStyle = '#f5e6d3';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Draw floor tiles (checkered pattern like konbini)
+            // Floor tiles
             for (let y = 0; y < GRID_H; y++) {
                 for (let x = 0; x < GRID_W; x++) {
-                    if ((x + y) % 2 === 0) {
-                        ctx.fillStyle = '#efe0cc';
-                    } else {
-                        ctx.fillStyle = '#f5e6d3';
-                    }
+                    ctx.fillStyle = (x + y) % 2 === 0 ? '#efe0cc' : '#f5e6d3';
                     ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
                 }
             }
 
-            // Subtle grid lines
+            // Grid lines
             ctx.strokeStyle = '#d4c4b0';
             ctx.lineWidth = 1;
             for (let x = 0; x <= GRID_W; x++) {
@@ -912,7 +979,7 @@
                 ctx.stroke();
             }
 
-            // Draw door at top (automatic sliding doors style)
+            // Door
             ctx.fillStyle = '#87CEEB';
             ctx.fillRect(5 * TILE_SIZE, 0, 3 * TILE_SIZE, TILE_SIZE - 4);
             ctx.fillStyle = '#4a90a4';
@@ -923,61 +990,64 @@
             ctx.fillText('🚪 ENTRANCE', 6.5 * TILE_SIZE, TILE_SIZE/2 + 8);
             ctx.textAlign = 'left';
 
-            // Draw stockroom area (back room feel)
+            // Stockroom
             ctx.fillStyle = '#c4b8a8';
             ctx.fillRect(0, stockroomY * TILE_SIZE, canvas.width, (GRID_H - stockroomY) * TILE_SIZE);
-            // Boxes visual
             ctx.fillStyle = '#a08060';
             ctx.fillRect(10, stockroomY * TILE_SIZE + 10, 80, 60);
             ctx.fillRect(canvas.width - 90, stockroomY * TILE_SIZE + 10, 80, 60);
             ctx.fillStyle = '#8b7355';
             ctx.font = '13px sans-serif';
-            ctx.fillText('📦 STOCKROOM - Hold SPACE to load items', 180, stockroomY * TILE_SIZE + 45);
+            ctx.fillText('📦 STOCKROOM - Hold SPACE to grab items', 180, stockroomY * TILE_SIZE + 45);
 
-            // Draw shelves
+            // Register
+            const regX = register.x * TILE_SIZE;
+            const regY = register.y * TILE_SIZE;
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(regX + 4, regY + 4, TILE_SIZE - 8, TILE_SIZE - 8);
+            ctx.fillStyle = '#D2691E';
+            ctx.fillRect(regX + 8, regY + 8, TILE_SIZE - 16, TILE_SIZE - 20);
+            ctx.fillStyle = '#333';
+            ctx.font = 'bold 10px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('💵', regX + TILE_SIZE/2, regY + TILE_SIZE/2 + 4);
+            ctx.font = '9px sans-serif';
+            ctx.fillText('REGISTER', regX + TILE_SIZE/2, regY + TILE_SIZE - 4);
+            ctx.textAlign = 'left';
+
+            // Shelves
             shelves.forEach(shelf => {
                 const shelfX = shelf.x * TILE_SIZE;
                 const shelfY = shelf.y * TILE_SIZE;
                 const fillRatio = shelf.items / shelf.maxItems;
 
-                // Get the appropriate sprite
                 let shelfImg = null;
                 if (shelf.type === 'drinks') shelfImg = assets.shelfDrinks;
                 else if (shelf.type === 'snacks') shelfImg = assets.shelfSnacks;
                 else if (shelf.type === 'bento') shelfImg = assets.shelfBento;
 
                 if (shelfImg) {
-                    // Draw sprite (scaled to 2x2 tiles for better visibility)
                     const size = TILE_SIZE * 2;
+                    ctx.globalAlpha = 0.3 + (fillRatio * 0.7);
 
-                    // Dim if not fully stocked
-                    if (!shelf.complete) {
-                        ctx.globalAlpha = 0.4 + (fillRatio * 0.6);
-                    }
-
-                    // Glow effect when complete
-                    if (shelf.complete) {
-                        ctx.shadowColor = '#ffd93d';
-                        ctx.shadowBlur = 20;
+                    // Warning glow if low stock
+                    if (shelf.items <= 3) {
+                        ctx.shadowColor = '#ff4444';
+                        ctx.shadowBlur = 10 + Math.sin(Date.now() / 200) * 5;
                     }
 
                     ctx.drawImage(shelfImg, shelfX - TILE_SIZE/2, shelfY - TILE_SIZE/2, size, size);
                     ctx.shadowBlur = 0;
                     ctx.globalAlpha = 1;
                 } else {
-                    // Fallback to colored rectangle
                     const brightness = 0.3 + (fillRatio * 0.7);
-                    ctx.fillStyle = shelf.complete ? shelf.color : adjustBrightness(shelf.color, brightness);
-                    if (shelf.complete) {
-                        ctx.shadowColor = shelf.color;
-                        ctx.shadowBlur = 15;
-                    }
+                    ctx.fillStyle = adjustBrightness(shelf.color, brightness);
                     ctx.fillRect(shelfX + 4, shelfY + 4, TILE_SIZE - 8, TILE_SIZE - 8);
-                    ctx.shadowBlur = 0;
                 }
 
-                // Item count (always show)
-                ctx.fillStyle = '#000';
+                // Stock count with warning color if low
+                const isLow = shelf.items <= 3;
+                ctx.fillStyle = isLow ? '#ff4444' : '#000';
                 ctx.fillRect(shelfX + TILE_SIZE/2 - 18, shelfY + TILE_SIZE - 16, 36, 16);
                 ctx.fillStyle = '#fff';
                 ctx.font = 'bold 12px sans-serif';
@@ -987,26 +1057,29 @@
                     shelfX + TILE_SIZE/2,
                     shelfY + TILE_SIZE - 4
                 );
+
+                // Price label
+                ctx.fillStyle = '#2a2';
+                ctx.font = '10px sans-serif';
+                ctx.fillText(`$${shelf.price}`, shelfX + TILE_SIZE/2, shelfY - 4);
             });
 
             ctx.textAlign = 'left';
 
-            // Draw player
+            // Player
             const px = player.x * TILE_SIZE;
             const py = player.y * TILE_SIZE;
 
             if (assets.player) {
-                // Draw player sprite (scaled to fit tile)
                 ctx.drawImage(assets.player, px, py - 8, TILE_SIZE, TILE_SIZE + 8);
             } else {
-                // Fallback to circle
                 ctx.fillStyle = player.color;
                 ctx.beginPath();
                 ctx.arc(px + TILE_SIZE/2, py + TILE_SIZE/2, TILE_SIZE/3, 0, Math.PI * 2);
                 ctx.fill();
             }
 
-            // Draw held items indicator (stacked boxes above player)
+            // Held items
             if (player.holding > 0) {
                 const centerX = px + TILE_SIZE/2;
 
@@ -1018,7 +1091,6 @@
                     ctx.strokeRect(centerX - 8, py - 12 - (i * 6), 16, 5);
                 }
 
-                // Show count badge
                 ctx.fillStyle = '#ffd93d';
                 ctx.beginPath();
                 ctx.arc(centerX + 12, py - 8, 10, 0, Math.PI * 2);
@@ -1030,7 +1102,7 @@
                 ctx.textAlign = 'left';
             }
 
-            // Draw customers
+            // Customers
             customers.forEach(customer => {
                 const custX = customer.x * TILE_SIZE;
                 const custY = customer.y * TILE_SIZE;
@@ -1038,16 +1110,14 @@
                 const cy = custY + TILE_SIZE/2;
 
                 if (assets.customer) {
-                    // Draw customer sprite (use front view - center third of image)
                     const imgW = assets.customer.width / 3;
                     const imgH = assets.customer.height;
                     ctx.drawImage(
                         assets.customer,
-                        imgW, 0, imgW, imgH,  // Source: middle third
-                        custX, custY - 8, TILE_SIZE, TILE_SIZE + 8  // Dest
+                        imgW, 0, imgW, imgH,
+                        custX, custY - 8, TILE_SIZE, TILE_SIZE + 8
                     );
                 } else {
-                    // Fallback to circle
                     ctx.fillStyle = customer.color;
                     ctx.beginPath();
                     ctx.arc(cx, cy, TILE_SIZE/4, 0, Math.PI * 2);
@@ -1057,18 +1127,39 @@
                     ctx.stroke();
                 }
 
-                // Thought bubble with what they want (only when browsing)
-                if (customer.state === 'browsing') {
-                    // Bubble background
+                // Shopping basket with item count
+                if (customer.cart.length > 0 || customer.state === 'shopping' || customer.state === 'grabbing') {
+                    // Basket icon
+                    ctx.fillStyle = '#8B4513';
+                    ctx.fillRect(cx - 12, cy + 12, 24, 14);
+                    ctx.strokeStyle = '#5D3A1A';
+                    ctx.strokeRect(cx - 12, cy + 12, 24, 14);
+
+                    // Item count in basket
+                    if (customer.cart.length > 0) {
+                        ctx.fillStyle = '#ffd93d';
+                        ctx.beginPath();
+                        ctx.arc(cx + 8, cy + 10, 8, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.fillStyle = '#000';
+                        ctx.font = 'bold 9px sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(customer.cart.length.toString(), cx + 8, cy + 13);
+                    }
+                }
+
+                // Thought bubble showing what they want (while shopping)
+                if (customer.state === 'shopping' || customer.state === 'grabbing') {
+                    const wantType = customer.shoppingList[customer.currentShopIndex];
+
                     ctx.fillStyle = '#fff';
                     ctx.beginPath();
-                    ctx.ellipse(cx + 20, cy - 30, 20, 14, 0, 0, Math.PI * 2);
+                    ctx.ellipse(cx + 20, cy - 30, 18, 12, 0, 0, Math.PI * 2);
                     ctx.fill();
                     ctx.strokeStyle = '#333';
                     ctx.lineWidth = 2;
                     ctx.stroke();
 
-                    // Bubble tail
                     ctx.fillStyle = '#fff';
                     ctx.beginPath();
                     ctx.moveTo(cx + 8, cy - 18);
@@ -1076,25 +1167,41 @@
                     ctx.lineTo(cx + 18, cy - 18);
                     ctx.fill();
 
-                    // Icon for what they want (emoji style)
-                    ctx.font = '14px sans-serif';
+                    ctx.font = '12px sans-serif';
                     ctx.textAlign = 'center';
-                    let emoji = '?';
-                    if (customer.want === 'drinks') emoji = '🥤';
-                    else if (customer.want === 'snacks') emoji = '🍪';
-                    else if (customer.want === 'bento') emoji = '🍱';
-                    ctx.fillText(emoji, cx + 20, cy - 26);
+                    let emoji = '❓';
+                    if (wantType === 'drinks') emoji = '🥤';
+                    else if (wantType === 'snacks') emoji = '🍪';
+                    else if (wantType === 'bento') emoji = '🍱';
+                    ctx.fillText(emoji, cx + 20, cy - 27);
                     ctx.textAlign = 'left';
                 }
 
-                // Happy hearts when helped
-                if (customer.state === 'helped') {
-                    ctx.font = '20px sans-serif';
-                    ctx.fillText('💕', cx - 8, cy - 25);
+                // Waiting indicator at register
+                if (customer.state === 'waiting') {
+                    const waitDuration = (Date.now() - customer.waitTime) / 1000;
+                    ctx.fillStyle = '#fff';
+                    ctx.beginPath();
+                    ctx.ellipse(cx + 20, cy - 30, 18, 12, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = waitDuration > 5 ? '#ff4444' : '#333';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+
+                    ctx.font = '14px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(waitDuration > 5 ? '😤' : '💵', cx + 20, cy - 27);
+                    ctx.textAlign = 'left';
+                }
+
+                // Happy face when leaving after checkout
+                if (customer.state === 'leaving') {
+                    ctx.font = '18px sans-serif';
+                    ctx.fillText('😊', cx - 8, cy - 25);
                 }
             });
 
-            // Draw sparkles
+            // Sparkles
             sparkles.forEach((s, i) => {
                 ctx.fillStyle = s.color;
                 ctx.globalAlpha = s.life;
@@ -1103,13 +1210,11 @@
                 ctx.fill();
                 ctx.globalAlpha = 1;
 
-                // Update sparkle
                 s.x += s.vx;
                 s.y += s.vy;
                 s.life -= 0.02;
             });
 
-            // Remove dead sparkles
             for (let i = sparkles.length - 1; i >= 0; i--) {
                 if (sparkles[i].life <= 0) sparkles.splice(i, 1);
             }
@@ -1118,7 +1223,6 @@
         }
 
         function adjustBrightness(hex, factor) {
-            // Convert hex to RGB, apply brightness, convert back
             const r = parseInt(hex.slice(1,3), 16);
             const g = parseInt(hex.slice(3,5), 16);
             const b = parseInt(hex.slice(5,7), 16);
@@ -1130,11 +1234,11 @@
             return `rgb(${newR}, ${newG}, ${newB})`;
         }
 
-        // Start game - load assets first
+        // Start
         async function init() {
             console.log('Loading assets...');
             await loadAssets();
-            console.log('Dunkin Prototype v7.0 loaded! Pixel art + procedural cozy music.');
+            console.log('Dunkin Konbini Simulator v8.0 loaded! Full shopping loop active.');
             draw();
             updateStatus();
         }
