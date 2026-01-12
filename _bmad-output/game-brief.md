@@ -30,7 +30,7 @@ game_name: "Conbini Life"
 
 **Core Pillars:** Zen > Progression > Routine > Connection
 
-**Key Differentiators:** Authentic Japanese konbini setting, bike commute as ritual, work sim (not life sim), audio-driven core toy.
+**Key Differentiators:** Authentic Japanese konbini setting, bike commute as ritual, work sim (not life sim), audio-driven satisfaction.
 
 **Platform:** Web browser (HTML5 Canvas, vanilla JS)
 
@@ -202,7 +202,7 @@ This is an AI-assisted game dev experiment. Traditional constraints (time, budge
 1. **Authentic Japanese konbini setting** - Real culture, not fantasy farm
 2. **The commute as ritual** - Bike through seasonal Japan as the "portal" to your world
 3. **Work sim, not life sim** - Be great at your job without managing a whole life
-4. **Audio-driven core toy** - Rising pitch shelf-stocking creates the zen satisfaction
+4. **Audio-driven satisfaction** - Rising pitch shelf-stocking contributes to the zen feel
 
 **Unique Value Proposition:**
 Stardew Valley meets Japanese convenience store culture - the cozy work sim where the commute is the meditation and the job is the therapy.
@@ -249,7 +249,7 @@ Modern-day Japan - a small town with your konbini at its heart. The world exists
 ### Audio Style
 
 - Procedural/AI-generated lo-fi music
-- Core toy: rising pitch feedback on shelf-stocking (1-9), ka-ching on complete
+- Stocking feedback: rising pitch (1-9), ka-ching on complete
 - Ambient sounds: door chime, register, customer murmurs
 - Seasonal audio cues
 
@@ -287,7 +287,7 @@ Modern-day Japan - a small town with your konbini at its heart. The world exists
 
 **Minimum Playable Version includes:**
 - Bike commute in/out (simple sunrise/sunset transition)
-- Shelf stocking with progressive audio feedback (the core toy)
+- Shelf stocking with progressive audio feedback
 - Basic customer checkout flow
 - 3-5 regular customers with simple dialogue
 - Progression: unlock 1-2 new shelf types or services
@@ -303,7 +303,7 @@ Modern-day Japan - a small town with your konbini at its heart. The world exists
 ### Success Metrics
 
 - **Engagement:** Players complete sessions and express desire to return
-- **Core loop validation:** Shelf-stocking audio feedback feels satisfying
+- **Core loop validation:** Core mechanics feel satisfying
 - **Vibe check:** Players describe experience as "chill," "relaxing," or "zen"
 - **Technical:** Smooth 60fps in browser, no major bugs
 

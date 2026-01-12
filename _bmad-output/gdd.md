@@ -72,7 +72,7 @@ This is the game you reluctantly close. One more shelf to stock, one more regula
 1. **Authentic Japanese Konbini Setting** - Real culture, not fantasy farm. Modern-day Japan through the lens of everyday life.
 2. **The Commute as Ritual** - The bike ride is the meditation. Sunrise through rice fields, cherry blossoms, autumn leaves, winter snow.
 3. **Work Sim, Not Life Sim** - Be great at your job without managing a whole life. No hunger meters, no relationship drama.
-4. **Audio-Driven Core Toy** - Shelf-stocking with rising pitch feedback (1-9) creates meditative rhythm. The ka-ching is the reward.
+4. **Audio-Driven Satisfaction** - Shelf-stocking with rising pitch feedback (1-9) creates meditative rhythm. The ka-ching is the reward.
 
 **Competitive Positioning:** Stardew Valley meets Japanese convenience store culture - the cozy work sim where the commute is the meditation and the job is the therapy.
 
@@ -93,7 +93,7 @@ This is the game you reluctantly close. One more shelf to stock, one more regula
 
 **Why Now:** AI-assisted development changes the constraints. Small team with Claude punches above its weight. Traditional blockers matter less - we focus on feel and polish.
 
-**Why Us:** Genuine appreciation for konbini culture without the otaku baggage. Slice-of-life authenticity. The prototype already proves the core toy works.
+**Why Us:** Genuine appreciation for konbini culture without the otaku baggage. Slice-of-life authenticity. The prototype already proves the core mechanics feel right.
 
 ---
 
@@ -185,8 +185,8 @@ The "failure" is closing the game - and even that's designed to feel like a natu
 
 ### Primary Mechanics
 
-#### Stock (The Core Toy)
-Replenish shelves with deeply satisfying audio-visual feedback. This is THE mechanic - the one that must feel perfect.
+#### Stock
+Replenish shelves with deeply satisfying audio-visual feedback. One of the key mechanics that creates the zen rhythm.
 
 **How it works:**
 - Approach empty/low shelf with inventory
@@ -561,7 +561,7 @@ Build relationships with regular customers who become part of your daily life.
 **Music Approach:** Procedural/AI-generated lo-fi soundtrack. Calm, unobtrusive, loopable.
 
 **Audio Pillars:**
-1. **Audio is gameplay** - The rising pitch shelf-stocking is THE core toy
+1. **Audio is gameplay** - Rising pitch shelf-stocking contributes to the zen feel
 2. **Ambient immersion** - Sound creates place and mood
 3. **Never intrusive** - Audio enhances calm, never disrupts it
 
@@ -618,7 +618,7 @@ Build relationships with regular customers who become part of your daily life.
 
 **Audio Performance:**
 - Web Audio API for procedural music
-- Low-latency sound effects (critical for core toy feedback)
+- Low-latency sound effects (important for responsive feedback)
 - Audio sprite sheets for common sounds
 
 ### Platform-Specific Details
@@ -680,12 +680,12 @@ Build relationships with regular customers who become part of your daily life.
 
 ### Epic Structure
 
-**Epic 0: Foundation & Core Toy**
+**Epic 0: Foundation & Core Mechanics**
 - Set up HTML5 Canvas game loop
 - Implement basic grid movement
-- **Build shelf-stocking mechanic with audio feedback** (CRITICAL - this is the game)
-- Validate the core toy feels right before proceeding
-- Deliverable: Playable prototype where stocking shelves feels satisfying
+- Build shelf-stocking mechanic with audio feedback
+- Validate core mechanics feel right before proceeding
+- Deliverable: Playable prototype with satisfying basic interactions
 
 **Epic 1: Core Loop Implementation**
 - Implement day/night cycle
@@ -748,7 +748,7 @@ Build relationships with regular customers who become part of your daily life.
 | Load Time | Under 3 seconds | First contentful paint |
 | Bundle Size | Under 5MB initial | Build analysis |
 | Input Latency | Under 16ms | User testing |
-| Audio Latency | Under 50ms | Core toy validation |
+| Audio Latency | Under 50ms | Feedback responsiveness |
 | Browser Compatibility | 95%+ modern browsers | Cross-browser testing |
 | Memory Usage | Under 100MB runtime | Chrome DevTools |
 | Save/Load Reliability | 100% LocalStorage success | Automated testing |
@@ -760,7 +760,7 @@ Build relationships with regular customers who become part of your daily life.
 |--------|--------|-------------|
 | Session Length | 15-45 min average | Analytics (if implemented) |
 | Return Rate | Players want to come back | Qualitative feedback |
-| Core Toy Satisfaction | "Stocking feels great" | Playtester quotes |
+| Mechanic Satisfaction | "Stocking feels great" | Playtester quotes |
 | Vibe Check | "Chill," "relaxing," "zen" | Player descriptions |
 | One More Day Pull | Players reluctant to quit | Session exit behavior |
 
@@ -821,7 +821,7 @@ Build relationships with regular customers who become part of your daily life.
 - Target browsers maintain current Canvas performance
 
 **Design Assumptions:**
-- The core stocking toy (audio feedback) will feel satisfying when polished
+- The stocking mechanic (audio feedback) will feel satisfying when polished
 - Players will develop attachment to regular customers
 - Seasonal variation provides enough long-term variety
 - The bike commute adds value rather than feeling like loading screens
@@ -855,7 +855,7 @@ Build relationships with regular customers who become part of your daily life.
 |------|------------|
 | Browser performance limits | Electron wrapper fallback ready |
 | AI asset inconsistency | Style guide + human curation pass |
-| Core toy doesn't feel right | Prototype first, validate before building |
+| Core mechanics don't feel right | Prototype first, validate before building |
 | Scope creep | Zen pillar as strict filter |
 | Player confusion (no goals) | Clear onboarding, embrace sandbox nature |
 

@@ -51,7 +51,7 @@ brief: 'game-brief.md'
 
 | System | Priority | Complexity | Notes |
 |--------|----------|------------|-------|
-| Audio System | Critical | High | Core toy - must feel perfect |
+| Audio System | Critical | High | Responsive feedback - must feel good |
 | Game Loop/Rendering | Critical | Medium | Canvas-based, 60fps target |
 | Grid Movement | High | Low | Arrow keys, simple collision |
 | Day/Night Cycle | High | Medium | Visual + gameplay state |
@@ -77,7 +77,7 @@ brief: 'game-brief.md'
 
 ### Complexity Drivers
 
-1. **Audio-driven core toy** - Rising pitch feedback (1-9) with ka-ching must feel satisfying. Zero tolerance for latency.
+1. **Audio-driven satisfaction** - Rising pitch feedback (1-9) with ka-ching must feel satisfying. Zero tolerance for latency.
 2. **Procedural audio** - Lo-fi music generation with time/season variants
 3. **Stateless framework** - No React/Vue, pure vanilla JS state management
 4. **Asset volume** - 4 seasonal variants, 15+ character sprites, 50+ product sprites
@@ -115,7 +115,7 @@ touch index.html game.js styles.css
 | Component | Browser API | Notes |
 |-----------|-------------|-------|
 | Rendering | Canvas 2D Context | `getContext('2d')` |
-| Audio | Web Audio API | Critical for core toy feedback |
+| Audio | Web Audio API | Critical for responsive feedback |
 | Input | KeyboardEvent | Arrow keys + E + Space |
 | Storage | LocalStorage | Save/load game state |
 | Timing | requestAnimationFrame | 60fps game loop |

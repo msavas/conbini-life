@@ -58,7 +58,7 @@ status: 'complete'
 
 ## The Toys (Satisfying Micro-Actions)
 
-### Stocking Shelves - THE Core Toy
+### Stocking Shelves - Satisfying Micro-Action
 - Transform chaos → perfect order
 - All labels facing outward
 - Progressive audio feedback: pitch rises as shelf fills (1-9), ka-ching on 10/10!
