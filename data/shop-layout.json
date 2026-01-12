@@ -1,0 +1,44 @@
+{
+  "name": "Konbini Main Floor",
+  "width": 12,
+  "height": 8,
+  "layout": [
+    ["wall",  "register", "wall",  "floor", "floor", "door",  "door",  "floor", "floor", "wall",  "shelf", "wall"],
+    ["floor", "floor",    "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor"],
+    ["shelf", "shelf",    "floor", "shelf", "shelf", "floor", "shelf", "shelf", "floor", "shelf", "shelf", "wall"],
+    ["floor", "floor",    "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor"],
+    ["shelf", "shelf",    "floor", "shelf", "shelf", "floor", "shelf", "shelf", "floor", "shelf", "shelf", "wall"],
+    ["floor", "floor",    "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor", "floor"],
+    ["shelf", "shelf",    "floor", "shelf", "shelf", "floor", "shelf", "shelf", "floor", "floor", "backroom", "backroom"],
+    ["wall",  "wall",     "floor", "wall",  "wall",  "floor", "wall",  "wall",  "floor", "wall",  "wall", "wall"]
+  ],
+  "zones": {
+    "register": { "x": 1, "y": 0 },
+    "door": { "x": 5, "y": 0, "width": 2 },
+    "backroom": { "x": 10, "y": 6, "width": 2 }
+  },
+  "shelfContents": {
+    "0,2": "drinks",
+    "1,2": "drinks",
+    "3,2": "snacks",
+    "4,2": "snacks",
+    "6,2": "bento",
+    "7,2": "bento",
+    "9,2": "magazines",
+    "10,2": "magazines",
+    "0,4": "drinks",
+    "1,4": "drinks",
+    "3,4": "onigiri",
+    "4,4": "onigiri",
+    "6,4": "desserts",
+    "7,4": "desserts",
+    "9,4": "icecream",
+    "10,4": "icecream",
+    "0,6": "hotfood",
+    "1,6": "hotfood",
+    "3,6": "instant",
+    "4,6": "instant",
+    "6,6": "household",
+    "7,6": "household"
+  }
+}

@@ -70,10 +70,10 @@ workflow_status:
 
       - id: "test-framework"
         name: "Test Framework"
-        status: "recommended"
+        status: "skipped"
         agent: "game-qa"
         command: "bmad:bmgd:workflows:gametest-framework"
-        note: "Set up automated testing early"
+        note: "Skipped - manual playtesting only"
 
   # Phase 3: Production
   - phase: 3

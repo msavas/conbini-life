@@ -751,7 +751,7 @@ Build relationships with regular customers who become part of your daily life.
 | Audio Latency | Under 50ms | Feedback responsiveness |
 | Browser Compatibility | 95%+ modern browsers | Cross-browser testing |
 | Memory Usage | Under 100MB runtime | Chrome DevTools |
-| Save/Load Reliability | 100% LocalStorage success | Automated testing |
+| Save/Load Reliability | 100% LocalStorage success | Manual testing |
 
 ### Gameplay Metrics
 
